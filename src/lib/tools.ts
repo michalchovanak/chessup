@@ -1,7 +1,9 @@
 "use client";
 import { Chess, type Square } from "chess.js";
 import { store, isSquare, levelFor, xpForLevel } from "./store";
+import { validateFen } from "./chessLogic";
 import { gameStatus, materialBalance, bestCapture, findMateInOne } from "./chessLogic";
+import { engine, formatScore, foldScore } from "./engine";
 import type { AnnoColor, Color, LessonStatus, LessonStep, MistakeCategory, NoteKind, PuzzleSpec, Severity } from "./types";
 
 export interface ToolDef {
@@ -64,6 +66,7 @@ function summariseState(nextOverride?: string) {
     description: m.description,
     movePlayed: m.movePlayed,
     betterMove: m.betterMove,
+    ...(m.cpLoss !== undefined ? { cpLoss: m.cpLoss } : {}),
   }));
   const p = st.puzzle;
   const lastMove = st.moves[st.moves.length - 1];
@@ -95,6 +98,7 @@ function summariseState(nextOverride?: string) {
     result: status.result,
     inCheck: chess.isCheck(),
     materialBalance: materialBalance(chess),
+    engineEval: st.lastEval && st.lastEval.fen === st.fen ? { eval: formatScore(st.lastEval.scoreWhite), depth: st.lastEval.depth, bestMove: st.lastEval.bestMove } : null,
     moveNumber: chess.moveNumber(),
     moveCount: st.moves.length,
     recentMoves: buildPgn(st.moves, 20),
@@ -145,7 +149,7 @@ export const tools: ToolDef[] = [
         "Explain in the chat; on the board use highlight_squares, draw_arrows and one-sentence coach_note captions.",
         "Personalise from get_player_profile (weakestAreas, recent mistakes, drills).",
       ],
-      reviewLoop: ["get_game_state", "highlight_squares / draw_arrows", "coach_note (1 sentence)", "record_mistake for non-tactical errors", "add_xp / award_badge for real progress"],
+      reviewLoop: ["get_game_state (events carry Stockfish centipawn loss and best move per human move)", "analyze_position when you need to verify a line", "highlight_squares / draw_arrows", "coach_note (1 sentence)", "record_mistake for non-tactical errors", "add_xp / award_badge for real progress"],
       drillLoop: ["get_player_profile → weakestAreas and candidatePuzzles (positions from the human's own games, already validated)", "set_puzzle_queue with 3-5 puzzles: start with candidatePuzzles, add your own on the same theme (fen, title, goal, hint, theme, solution)", "the app serves, grades and rewards them", "when the human returns: read `drill.results` in get_game_state, update_lesson_step, award_badge if at least two thirds were solved, plan the next drill"],
       sparringLoop: ["only when the human asks to play against you", "new_game opponent 'agent'", "make_move", "wait_for_player_move", "repeat; it ends whenever the human chats"],
       rules: ["After set_puzzle_queue end your turn; never wait, poll or change the board while a drill is active.", "Never move the human's pieces in a puzzle; hint instead.", "Keep captions to one sentence.", "Reply in the human's language."],
@@ -156,7 +160,7 @@ export const tools: ToolDef[] = [
     name: "get_game_state",
     title: "Get game state",
     description:
-      "Read the board: FEN, turn, status, material, recent moves, active puzzle and drill progress, the human's recent mistakes, `events` since your last call (moves with auto-analysis, puzzle and drill results, game over) and `next`. Call it every time the human talks to you.",
+      "Read the board: FEN, turn, status, material, engine evaluation, recent moves, active puzzle and drill progress, the human's recent mistakes (heuristics and Stockfish centipawn loss), `events` since your last call and `next`. Call it every time the human talks to you.",
     inputSchema: { type: "object", properties: {}, additionalProperties: false },
     annotations: { readOnlyHint: true },
     execute: () => summariseState(),
@@ -318,11 +322,18 @@ export const tools: ToolDef[] = [
       required: ["fen"],
       additionalProperties: false,
     },
-    execute: (input) => {
+    execute: async (input) => {
       const guard = drillGuard(input);
       if (guard) return guard;
       const solution = Array.isArray(input.solution) ? input.solution.filter((s): s is string => typeof s === "string") : undefined;
       const pc = input.playerColor === "black" ? "b" : input.playerColor === "white" ? "w" : undefined;
+      if (solution?.length) {
+        const legal = store.validatePuzzleSpec(str(input.fen), solution);
+        if (legal.ok) {
+          const check = await verifyPuzzleWithEngine(str(input.fen), legal.solution);
+          if (check.ok === false) return { ok: false, error: check.reason };
+        }
+      }
       const r = store.setPosition({
         fen: str(input.fen),
         title: str(input.title) || undefined,
@@ -345,10 +356,47 @@ export const tools: ToolDef[] = [
     },
   },
   {
+    name: "analyze_position",
+    title: "Analyze a position (Stockfish)",
+    description:
+      "Run the built-in Stockfish engine on the current position (or a given FEN): evaluation from White's perspective, best move and line, and up to 3 alternatives with their evaluations. Use it to verify a claim before teaching it, to find the best move for a review, or to check a puzzle idea. Depth 8-20 (default 14).",
+    inputSchema: {
+      type: "object",
+      properties: {
+        fen: { type: "string", description: "Position to analyse. Defaults to the board." },
+        depth: { type: "integer", minimum: 8, maximum: 20, description: "Search depth. Default 14." },
+        multipv: { type: "integer", minimum: 1, maximum: 3, description: "How many best lines to return. Default 1." },
+      },
+      additionalProperties: false,
+    },
+    annotations: { readOnlyHint: true },
+    execute: async (input) => {
+      const fen = str(input.fen) || store.getState().fen;
+      const v = validateFen(fen);
+      if (!v.ok) return { ok: false, error: `Invalid FEN: ${v.error ?? "unknown"}` };
+      try {
+        const a = await engine.analyse(fen, { depth: num(input.depth, 14), multipv: num(input.multipv, 1) });
+        const sign = a.turn === "w" ? 1 : -1;
+        return {
+          ok: true,
+          fen,
+          turn: colorName(a.turn),
+          depth: a.depth,
+          eval: formatScore(a.scoreWhite),
+          bestMove: a.bestMove,
+          bestLine: a.best?.pv.slice(0, 6) ?? [],
+          alternatives: a.lines.slice(1).map((l) => ({ move: l.pv[0], eval: formatScore(foldScore(l) * sign), line: l.pv.slice(0, 4) })),
+        };
+      } catch (e) {
+        return { ok: false, error: `Engine unavailable: ${e instanceof Error ? e.message : String(e)}` };
+      }
+    },
+  },
+  {
     name: "set_puzzle_queue",
     title: "Start a puzzle drill",
     description:
-      "Start a drill: 3-5 puzzles the app serves one by one, grades against the solution, auto-plays replies, awards XP and records results per theme. Each puzzle: fen, title, goal, optional hint, theme, and a SAN `solution` (human's move first, alternating). Invalid puzzles are rejected individually. After calling it, END YOUR TURN: the human solves on the board and tells you when done; then read get_game_state.drill.",
+      "Start a drill: 3-5 puzzles the app serves one by one, grades against the solution, auto-plays replies, awards XP and records results per theme. Each puzzle: fen, title, goal, optional hint, theme, and a SAN `solution` (human's move first, alternating). Every line is checked for legality and by Stockfish (the human's moves must be best); rejected puzzles come back with the reason. After calling it, END YOUR TURN; the human tells you when done.",
     inputSchema: {
       type: "object",
       properties: {
@@ -375,16 +423,18 @@ export const tools: ToolDef[] = [
       required: ["puzzles"],
       additionalProperties: false,
     },
-    execute: (input) => {
+    execute: async (input) => {
       const guard = drillGuard(input);
       if (guard) return guard;
       const raw = Array.isArray(input.puzzles) ? input.puzzles : [];
       const accepted: PuzzleSpec[] = [];
       const rejected: { index: number; title: string; error: string }[] = [];
-      raw.forEach((item, index) => {
+      let engineChecked = 0;
+      for (let index = 0; index < raw.length; index++) {
+        const item = raw[index];
         if (typeof item !== "object" || item === null) {
           rejected.push({ index, title: "?", error: "Not an object." });
-          return;
+          continue;
         }
         const o = item as Record<string, unknown>;
         const solution = Array.isArray(o.solution) ? o.solution.filter((x): x is string => typeof x === "string") : [];
@@ -392,21 +442,28 @@ export const tools: ToolDef[] = [
         const title = str(o.title) || `Puzzle ${index + 1}`;
         if (!solution.length) {
           rejected.push({ index, title, error: "Missing solution." });
-          return;
+          continue;
         }
         const v = store.validatePuzzleSpec(fen, solution);
         if (!v.ok) {
           rejected.push({ index, title, error: v.error });
-          return;
+          continue;
         }
+        const check = await verifyPuzzleWithEngine(fen, v.solution);
+        if (check.ok === false) {
+          rejected.push({ index, title, error: check.reason });
+          continue;
+        }
+        if (check.ok === true) engineChecked += 1;
         accepted.push({ fen, title, goal: str(o.goal) || "Find the best move.", hint: str(o.hint) || undefined, theme: str(o.theme) || undefined, solution: v.solution });
-      });
+      }
       if (!accepted.length) return { ok: false, error: "No valid puzzles.", rejected };
       const { drill } = store.startDrill(str(input.title) || "Puzzle drill", accepted);
       return {
         ok: true,
         drillId: drill.id,
         accepted: accepted.length,
+        engineVerified: engineChecked,
         rejected,
         next: "Done: the human solves the drill on the board now. End your turn immediately (do not wait, poll or change the board). When they say they are done, call get_game_state and read `drill.results`.",
       };
@@ -685,6 +742,42 @@ export const tools: ToolDef[] = [
   },
 ];
 
+/**
+ * Engine check of a puzzle line: every human move must be the engine's best move
+ * (or within 60 centipawns of it). Returns null when fine, else a reason.
+ */
+async function verifyPuzzleWithEngine(fen: string, solution: string[]): Promise<{ ok: true } | { ok: false; reason: string } | { ok: "skipped" }> {
+  if (engine.status === "error") return { ok: "skipped" };
+  try {
+    await Promise.race([engine.load(), new Promise((_, rej) => setTimeout(() => rej(new Error("engine load timeout")), 15000))]);
+  } catch {
+    return { ok: "skipped" };
+  }
+  const c = new Chess(fen);
+  for (let i = 0; i < solution.length; i++) {
+    const san = solution[i];
+    if (i % 2 === 0) {
+      const a = await engine.analyse(c.fen(), { depth: 12, multipv: 3 });
+      const best = a.best;
+      if (best && best.pv[0] !== san) {
+        const found = a.lines.find((l) => l.pv[0] === san);
+        const bestScore = foldScore(best);
+        const gap = found ? bestScore - foldScore(found) : Infinity;
+        if (gap > 60) {
+          const why = !found
+            ? `${san} is not among the top 3 moves`
+            : Math.abs(bestScore) >= 9000
+              ? `${san} misses a forced mate`
+              : `${san} is ${(gap / 100).toFixed(1)} pawns worse`;
+          return { ok: false, reason: `Move ${i + 1} "${san}" is not best: engine prefers ${best.pv[0]} (${formatScore(a.scoreWhite)}); ${why}.` };
+        }
+      }
+    }
+    c.move(san);
+  }
+  return { ok: true };
+}
+
 /** Puzzles derived from the human's own auto-detected mistakes, ready for set_puzzle_queue. */
 function candidatePuzzles(mistakes: { category: string; fen: string; fenAfter?: string; betterMove?: string; punishMove?: string; movePlayed?: string; at: number }[]) {
   const out: { title: string; fen: string; goal: string; theme: string; solution: string[]; from: string }[] = [];
@@ -694,10 +787,10 @@ function candidatePuzzles(mistakes: { category: string; fen: string; fenAfter?: 
     let fen: string | undefined;
     let solution: string | undefined;
     let goal = "";
-    if ((m.category === "missed_mate" || m.category === "missed_capture") && m.betterMove) {
+    if ((m.category === "missed_mate" || m.category === "missed_capture" || m.category === "tactics" || m.category === "positional") && m.betterMove && m.fen) {
       fen = m.fen;
       solution = m.betterMove;
-      goal = m.category === "missed_mate" ? "Find the checkmate you missed." : "Find the winning capture you missed.";
+      goal = m.category === "missed_mate" ? "Find the checkmate you missed." : m.category === "missed_capture" ? "Find the winning capture you missed." : "Find the move the engine preferred.";
     } else if ((m.category === "hanging_piece" || m.category === "allowed_mate") && m.fenAfter && m.punishMove) {
       fen = m.fenAfter;
       solution = m.punishMove;

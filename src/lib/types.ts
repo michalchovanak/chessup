@@ -55,7 +55,9 @@ export interface Mistake {
   fenAfter?: string;
   /** The opponent's move that punishes the mistake, in SAN. */
   punishMove?: string;
-  source: "auto" | "agent";
+  /** Engine evaluation loss in centipawns, when the engine reviewed the move. */
+  cpLoss?: number;
+  source: "auto" | "agent" | "engine";
 }
 
 export type NoteKind = "tip" | "praise" | "warning" | "question" | "info";
@@ -203,4 +205,7 @@ export interface AppState {
   agentWaiting: boolean;
   gameStartedAt: number;
   lastMoveAt: number;
+  engineStatus: "off" | "loading" | "ready" | "error";
+  /** Latest engine evaluation of the current position (White's perspective, centipawns, mate folded). */
+  lastEval: { fen: string; scoreWhite: number; depth: number; bestMove: string | null } | null;
 }

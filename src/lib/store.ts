@@ -1,5 +1,6 @@
 "use client";
 import { Chess, type Move, type Square } from "chess.js";
+import { engine, formatScore } from "./engine";
 import {
   START_FEN,
   analyseHumanMove,
@@ -80,6 +81,8 @@ export function initialState(): AppState {
     agentWaiting: false,
     gameStartedAt: 0,
     lastMoveAt: 0,
+    engineStatus: "off",
+    lastEval: null,
   };
 }
 
@@ -173,6 +176,72 @@ class Store {
     }
     this.set({ ...patch, profile, hydrated: true });
     this.maybeScheduleBot();
+    engine.onStatus((st) => this.set({ engineStatus: st }));
+    setTimeout(() => {
+      engine.load().then(() => this.refreshEval()).catch(() => {});
+    }, 1200);
+  }
+
+  // ---------- engine ----------
+
+  /** Re-evaluate the current position for the eval bar (cheap depth). */
+  refreshEval() {
+    if (engine.status !== "ready") return;
+    const fen = this.state.fen;
+    engine
+      .analyse(fen, { depth: 12 })
+      .then((a) => {
+        if (this.state.fen !== fen) return;
+        this.set({ lastEval: { fen, scoreWhite: a.scoreWhite, depth: a.depth, bestMove: a.bestMove } });
+      })
+      .catch(() => {});
+  }
+
+  /** Engine review of a human move: centipawn loss, best move, mistake record when it matters. */
+  private async engineReview(fenBefore: string, fenAfter: string, san: string, heuristicsFound: boolean) {
+    if (engine.status === "error") return;
+    try {
+      const before = await engine.analyse(fenBefore, { depth: 12 });
+      const afterC = new Chess(fenAfter);
+      const after = afterC.isGameOver() ? null : await engine.analyse(fenAfter, { depth: 12 });
+      const moverBefore = before.score;
+      const moverAfter = after ? -after.score : afterC.isCheckmate() ? 10000 : 0;
+      const loss = Math.max(0, moverBefore - moverAfter);
+      const best = before.bestMove;
+      this.pushEvent("engine_review", `${san}: ${loss >= 100 ? `lost ${(loss / 100).toFixed(1)} pawns` : "fine"}${best && best !== san ? `, best was ${best}` : ""} (eval ${formatScore(after ? after.scoreWhite : before.scoreWhite)})`, {
+        san,
+        cpLoss: loss,
+        bestMove: best,
+        evalAfter: after ? formatScore(after.scoreWhite) : undefined,
+      });
+      if (loss >= 100 && best && best !== san) {
+        const severity: Severity = loss >= 300 ? "blunder" : loss >= 150 ? "mistake" : "inaccuracy";
+        if (heuristicsFound) {
+          // Enrich the most recent auto mistake with the engine's numbers instead of duplicating it.
+          const profile = structuredClone(this.state.profile);
+          const m = profile.mistakes.find((x) => x.source === "auto" && x.movePlayed === san && x.fen === fenBefore);
+          if (m) {
+            m.cpLoss = loss;
+            if (!m.betterMove) m.betterMove = best;
+            this.set({ profile });
+          }
+        } else {
+          this.recordMistake({
+            category: loss >= 300 ? "tactics" : "positional",
+            severity,
+            description: `Engine: ${san} lost ${(loss / 100).toFixed(1)} pawns; ${best} was better.`,
+            fen: fenBefore,
+            movePlayed: san,
+            betterMove: best,
+            fenAfter,
+            cpLoss: loss,
+            source: "engine",
+          });
+        }
+      }
+    } catch {
+      /* engine unavailable: heuristics still apply */
+    }
   }
 
   setAgentConnected(v: boolean) {
@@ -310,12 +379,14 @@ class Store {
         autoAnalysis: analysis,
       });
       this.checkPuzzleProgress(move);
+      if (!this.state.puzzle) void this.engineReview(fenBefore, after.fen(), move.san, analysis.length > 0);
     } else if (by === "agent") {
       this.pushEvent("agent_move", `Agent played ${move.san}`, { san: move.san });
     }
 
     this.checkGameOver();
     this.maybeScheduleBot();
+    this.refreshEval();
     return { ok: true, move, record };
   }
 
@@ -394,6 +465,7 @@ class Store {
       this.set({ puzzle: { ...p, solutionIndex: Math.max(0, p.solutionIndex - undone.length), status: p.status === "failed" ? "active" : p.status } });
     }
     this.pushEvent("undo", `Undid ${undone.length} move(s): ${undone.join(" ")}`);
+    this.refreshEval();
     return { ok: true, undone, fen };
   }
 
@@ -417,6 +489,7 @@ class Store {
     });
     this.pushEvent("new_game", `New game started. Player is ${merged.playerColor === "w" ? "White" : "Black"}, opponent: ${merged.opponent}.`);
     this.maybeScheduleBot();
+    this.refreshEval();
   }
 
   setSettings(settings: Partial<GameSettings>) {
@@ -477,6 +550,7 @@ class Store {
     });
     this.pushEvent("position_set", "Position set.");
     this.maybeScheduleBot();
+    this.refreshEval();
     return { ok: true, puzzle: null };
   }
 

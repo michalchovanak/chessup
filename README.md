@@ -26,7 +26,8 @@ ChessUp exposes the board as structured capabilities instead:
 
 - **Exact context:** FEN, move history, legal moves, game status, mistakes, lesson progress, and events since the agent's last visit.
 - **Visible teaching:** arrows, highlights, and one-sentence coaching notes appear on the same board the person is using.
-- **Safe delegation:** agent-created puzzle lines are validated before the student sees them.
+- **Safe delegation:** agent-created puzzle lines are checked for legality and verified by the built-in Stockfish (the student's moves must be the engine's best) before the student sees them.
+- **Ground truth in the page:** Stockfish 18 (lite, WebAssembly) runs in a Web Worker. It scores every human move in centipawn loss, records engine-only mistakes, feeds the evaluation bar, and answers `analyze_position` so the agent can verify a line before teaching it.
 - **Continuity:** a local player profile keeps mistakes, puzzle results, XP, badges, and weak areas across sessions.
 - **Pull-aware design:** the built-in bot responds instantly and the page records events, so the game never waits for the agent to wake up.
 
@@ -54,10 +55,10 @@ The board also works without an agent. In solo mode you can play the built-in bo
 
 ## WebMCP capabilities
 
-ChessUp registers 19 tools from [`src/lib/tools.ts`](src/lib/tools.ts):
+ChessUp registers 20 tools from [`src/lib/tools.ts`](src/lib/tools.ts):
 
 - **Orient:** `read_coach_instructions`
-- **Observe:** `get_game_state`, `get_legal_moves`, `get_player_profile`
+- **Observe:** `get_game_state`, `get_legal_moves`, `get_player_profile`, `analyze_position` (Stockfish)
 - **Play:** `new_game`, `make_move`, `undo_move`, `wait_for_player_move`
 - **Teach:** `highlight_squares`, `draw_arrows`, `clear_annotations`, `coach_note`
 - **Practise:** `set_position`, `set_puzzle_queue`
@@ -69,7 +70,7 @@ Read operations carry `readOnlyHint`. Tool inputs are constrained by JSON Schema
 
 - Tools are registered at the top-level page through the imperative `modelContext.registerTool()` API, supporting both `document.modelContext` and `navigator.modelContext` hosts.
 - A small external store coordinates React, the chess rules, local persistence, puzzle execution, and WebMCP calls.
-- `chess.js` handles legal move validation. Lightweight heuristics detect hanging pieces, missed captures, and mate-in-one patterns.
+- `chess.js` handles legal move validation. Lightweight heuristics detect hanging pieces, missed captures, and mate-in-one patterns; Stockfish 18 lite (single-threaded WASM, ~7 MB, loaded lazily from `public/engine/`) adds centipawn loss per move, engine-verified puzzles and the evaluation bar. No special headers are needed.
 - The event queue tells the agent what happened since its previous call instead of asking it to diff game histories.
 - Everything runs in the browser. There is no backend, API key, account, or model bundled into the app.
 
@@ -96,13 +97,15 @@ npm run build
 ```text
 src/app/                   page, layout, and global styles
 src/components/            board and visible interaction states
-src/lib/tools.ts           19 WebMCP schemas and handlers
+src/lib/tools.ts           20 WebMCP schemas and handlers
 src/lib/webmcp.ts          browser registration adapter
 src/lib/store.ts           game state, persistence, drills, and events
 src/lib/chessLogic.ts      bot and lightweight mistake detection
+src/lib/engine.ts          Stockfish UCI client (Web Worker)
+public/engine/             Stockfish 18 lite WASM build (GPLv3, see COPYING.txt)
 docs/DEVPOST.md            copy-ready submission answers and demo script
 ```
 
 ## License
 
-[MIT](LICENSE)
+App code: [MIT](LICENSE). The bundled Stockfish engine in `public/engine/` is GPLv3 (see `public/engine/COPYING.txt`) and is loaded as a separate WebAssembly worker.

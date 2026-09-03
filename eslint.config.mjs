@@ -12,6 +12,8 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Third-party engine bundle served as a static asset.
+    "public/engine/**",
   ]),
 ]);
 

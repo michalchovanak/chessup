@@ -28,7 +28,7 @@ function AgentPill({ connected, hydrated }: { connected: boolean; hydrated: bool
   const label = !hydrated ? "…" : connected ? "WebMCP live" : "Solo mode";
   return (
     <div
-      title={connected ? "navigator.modelContext found: 19 tools registered via WebMCP" : "Open this page in ChatGPT's browser or Chrome with chrome://flags/#enable-webmcp-testing to let an agent coach you."}
+      title={connected ? "navigator.modelContext found: 20 tools registered via WebMCP" : "Open this page in ChatGPT's browser or Chrome with chrome://flags/#enable-webmcp-testing to let an agent coach you."}
       className={`flex h-8 items-center gap-2 rounded-lg px-2 text-[11px] font-medium ${
         connected ? "text-emerald-300" : "text-slate-500"
       }`}

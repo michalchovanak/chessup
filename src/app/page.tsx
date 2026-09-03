@@ -1,4 +1,5 @@
 import { Board } from "@/components/Board";
+import { EvalBar } from "@/components/EvalBar";
 import { Header } from "@/components/Header";
 import { PuzzleCard } from "@/components/PuzzleCard";
 import { LessonPlan } from "@/components/LessonPlan";
@@ -21,7 +22,12 @@ export default function Home() {
       <div className="mx-auto grid max-w-[1380px] gap-5 px-4 py-5 sm:px-6 lg:grid-cols-[minmax(0,1fr)_360px] lg:px-8 xl:grid-cols-[minmax(0,1fr)_390px] xl:gap-7">
         <div className="min-w-0">
           <div className="board-column mx-auto">
-            <Board />
+            <div className="flex items-stretch gap-2">
+              <EvalBar />
+              <div className="min-w-0 flex-1">
+                <Board />
+              </div>
+            </div>
             <GameControls />
           </div>
           <div className="board-column mx-auto mt-3 space-y-2">

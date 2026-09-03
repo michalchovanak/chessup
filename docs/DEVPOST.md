@@ -44,9 +44,9 @@ Before WebMCP, a general browser agent could discuss chess but could not reliabl
 
 ## How did you implement WebMCP?
 
-ChessUp registers 19 imperative tools from the top-level page through the `modelContext.registerTool()` API, supporting both `document.modelContext` and `navigator.modelContext` hosts. Every tool has a clear description, a constrained JSON input schema, and structured output. Read operations use `readOnlyHint` annotations.
+ChessUp registers 20 imperative tools from the top-level page through the `modelContext.registerTool()` API, supporting both `document.modelContext` and `navigator.modelContext` hosts. Every tool has a clear description, a constrained JSON input schema, and structured output. Read operations use `readOnlyHint` annotations.
 
-The tool handlers reuse the same local store and chess logic as the human interface. `get_game_state` returns FEN, move history, status, material, active exercises, recent mistakes, and a queue of events since the previous call. Teaching tools draw arrows, highlight squares, and post notes. `set_puzzle_queue` accepts an agent-created drill, validates every FEN and SAN solution with chess.js, and rejects invalid lines before displaying them.
+The tool handlers reuse the same local store and chess logic as the human interface. `get_game_state` returns FEN, move history, status, material, active exercises, recent mistakes, and a queue of events since the previous call. Teaching tools draw arrows, highlight squares, and post notes. `set_puzzle_queue` accepts an agent-created drill, validates every FEN and SAN solution with chess.js, then verifies each of the student's moves with the built-in Stockfish (WebAssembly, in a Web Worker) and rejects lines that are illegal or not best. `analyze_position` exposes the same engine to the agent, and every human move is scored in centipawn loss so the profile is grounded in engine truth, not only in what the model believes.
 
 Long-running work is delegated to the page. It serves and grades a drill without polling the agent, while `wait_for_player_move` supports optional live sparring with an `AbortSignal`. All state persists in `localStorage`; no backend or API key is required.
 
@@ -59,7 +59,7 @@ A human coach works differently: they watch the student, identify a recurring pa
 ## What it does
 
 - Plays a normal game against a built-in bot or in two-player analysis mode.
-- Records moves and detects simple tactical mistakes locally.
+- Records moves and scores each one with Stockfish (centipawn loss) plus tactical heuristics, locally.
 - Gives the agent exact game state and an event queue through WebMCP.
 - Lets the agent explain with board highlights, arrows, and coaching notes.
 - Generates validated puzzle drills based on the player's weakest patterns.
@@ -77,7 +77,7 @@ The deterministic work stays in the app: move legality, puzzle validation, bot r
 
 The biggest design challenge was WebMCP's pull-based lifecycle. The page cannot independently wake the agent after every human move. We solved that in two ways: normal games use an instant built-in bot plus an event queue the agent reads later, while optional sparring uses a bounded `wait_for_player_move` tool.
 
-The second challenge was trusting agent-generated chess content. A fluent-looking puzzle can still contain an illegal move. ChessUp validates the entire proposed SAN line against its FEN before starting a puzzle and returns a precise rejection when the line breaks.
+The second challenge was trusting agent-generated chess content. A fluent-looking puzzle can contain an illegal move, or a legal move that simply is not best. ChessUp validates the entire proposed SAN line against its FEN and then asks the built-in Stockfish whether each of the student's moves is the engine's choice; it returns a precise rejection ("engine prefers Qxf7#, Qh4 misses a forced mate") when the line fails.
 
 The third challenge was keeping the experience understandable with 19 capabilities. We grouped the visible UI around one primary action—turn a mistake into a lesson—and placed secondary history, prompts, and progress behind disclosures.
 
@@ -85,7 +85,7 @@ The third challenge was keeping the experience understandable with 19 capabiliti
 
 - The first drill position can come directly from the player's own game.
 - The agent and the human operate on one visible board instead of exchanging notation manually.
-- Agent-generated puzzle lines are validated before use.
+- Agent-generated puzzle lines are validated for legality and verified by Stockfish before use.
 - The app remains fully playable without an agent, backend, account, or API key.
 - The same store powers the UI and WebMCP tools, so agent actions are immediately visible and auditable.
 
@@ -100,8 +100,8 @@ Finally, an agent-aware page needs to be resilient to absence and interruption. 
 ## What's next
 
 - Spaced repetition for positions generated from the player's own mistakes.
+- Session summaries the coach can read back at the start of the next session.
 - Opening-pattern tracking across games.
-- Optional Stockfish WASM evaluation for deeper analysis while keeping everything local.
 - Import and export of games and training history.
 
 ## Demo video script — 2 minutes
