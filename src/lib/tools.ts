@@ -150,6 +150,10 @@ export const tools: ToolDef[] = [
       additionalProperties: false,
     },
     execute: (input) => {
+      const st = store.getState();
+      if (st.puzzle?.status === "active" && store.isHumanTurn()) {
+        return { ok: false, error: `It is the student's move in the active puzzle "${st.puzzle.title}". Let them find it (use coach_note or highlight_squares for hints), or call new_game / set_position to leave the puzzle.` };
+      }
       const r = store.makeMove(
         { san: str(input.san) || undefined, from: str(input.from) || undefined, to: str(input.to) || undefined, promotion: str(input.promotion) || undefined },
         "agent"
