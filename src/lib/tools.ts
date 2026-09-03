@@ -38,6 +38,19 @@ function pickColor(v: unknown, fallback: AnnoColor = "green"): AnnoColor {
   return typeof v === "string" && (ANNO_COLORS as string[]).includes(v) ? (v as AnnoColor) : fallback;
 }
 
+const DRILL_GUARD_HINT = "A drill is active and the human is solving it on the board. Do not change the board or wait: end your turn now and let them finish; they will tell you when they are done. To abandon the drill on purpose pass cancelDrill: true.";
+
+/** Returns an error object when a drill is active and the call did not opt in to cancelling it. */
+function drillGuard(input: Record<string, unknown>): { ok: false; error: string; drill: { title: string; progress: string } } | null {
+  const d = store.getState().drill;
+  if (!d || d.status !== "active") return null;
+  if (input.cancelDrill === true) {
+    store.endDrill();
+    return null;
+  }
+  return { ok: false, error: DRILL_GUARD_HINT, drill: { title: d.title, progress: `${d.results.length}/${d.puzzles.length}` } };
+}
+
 function summariseState(nextOverride?: string) {
   const st = store.getState();
   const chess = new Chess(st.fen);
@@ -63,7 +76,7 @@ function summariseState(nextOverride?: string) {
       : d && d.status === "done"
         ? "Drill finished: comment on `drill.results`, update_lesson_step, award_badge if at least two thirds were solved, then propose the next step."
         : d && d.status === "active"
-          ? "The human is working through the drill on the board. Answer questions; read results here when they return."
+          ? "The human is solving the drill on the board. End your turn now (no waiting, no polling, no board changes); they will tell you when they are done."
         : opponent === "agent"
           ? yourTurn
             ? "Sparring: coach the last human move briefly, then make_move and wait_for_player_move."
@@ -135,7 +148,7 @@ export const tools: ToolDef[] = [
       reviewLoop: ["get_game_state", "highlight_squares / draw_arrows", "coach_note (1 sentence)", "record_mistake for non-tactical errors", "add_xp / award_badge for real progress"],
       drillLoop: ["get_player_profile → weakestAreas and candidatePuzzles (positions from the human's own games, already validated)", "set_puzzle_queue with 3-5 puzzles: start with candidatePuzzles, add your own on the same theme (fen, title, goal, hint, theme, solution)", "the app serves, grades and rewards them", "when the human returns: read `drill.results` in get_game_state, update_lesson_step, award_badge if at least two thirds were solved, plan the next drill"],
       sparringLoop: ["only when the human asks to play against you", "new_game opponent 'agent'", "make_move", "wait_for_player_move", "repeat; it ends whenever the human chats"],
-      rules: ["Never move the human's pieces in a puzzle; hint instead.", "Keep captions to one sentence.", "Reply in the human's language."],
+      rules: ["After set_puzzle_queue end your turn; never wait, poll or change the board while a drill is active.", "Never move the human's pieces in a puzzle; hint instead.", "Keep captions to one sentence.", "Reply in the human's language."],
       next: "Call get_player_profile and get_game_state now.",
     }),
   },
@@ -190,6 +203,10 @@ export const tools: ToolDef[] = [
     },
     annotations: { readOnlyHint: true },
     execute: async (input, options) => {
+      const d = store.getState().drill;
+      if (d && d.status === "active") {
+        return { moved: false, ok: false, error: "A drill is active. Do not wait for it: end your turn and let the human solve it; they will tell you when they are done." };
+      }
       const secs = Math.min(120, Math.max(5, Math.round(num(input.timeoutSeconds, 25))));
       const moved = await store.waitForPlayerAction(secs * 1000, options?.signal);
       const puzzle = store.getState().puzzle;
@@ -267,10 +284,13 @@ export const tools: ToolDef[] = [
         playerColor: { type: "string", enum: ["white", "black"], description: "Colour the human plays. Default white." },
         opponent: { type: "string", enum: ["bot", "agent", "human"], description: "Who plays the other side. Default 'bot'; 'agent' = sparring with you." },
         botLevel: { type: "integer", enum: [1, 2, 3], description: "Strength of the built-in bot when opponent is 'bot'." },
+        cancelDrill: { type: "boolean", description: "Set true to abandon an active drill on purpose." },
       },
       additionalProperties: false,
     },
     execute: (input) => {
+      const guard = drillGuard(input);
+      if (guard) return guard;
       const pc = str(input.playerColor, "white") === "black" ? "b" : "w";
       const opp = (["agent", "bot", "human"] as const).find((o) => o === input.opponent) ?? "bot";
       const lvl = ([1, 2, 3] as const).find((l) => l === input.botLevel);
@@ -293,11 +313,14 @@ export const tools: ToolDef[] = [
         theme: { type: "string", description: "Tactical/strategic theme tag for tracking, e.g. 'fork', 'pin', 'mate_in_1'." },
         solution: { type: "array", items: { type: "string" }, description: "Solution line in SAN, student's move first, alternating sides. e.g. ['Qxf7#'] or ['Nxe5','Nxe5','Qh5+','g6','Qxe5']." },
         playerColor: { type: "string", enum: ["white", "black"], description: "Which colour the student plays. Defaults to the side to move in the FEN." },
+        cancelDrill: { type: "boolean", description: "Set true to abandon an active drill on purpose." },
       },
       required: ["fen"],
       additionalProperties: false,
     },
     execute: (input) => {
+      const guard = drillGuard(input);
+      if (guard) return guard;
       const solution = Array.isArray(input.solution) ? input.solution.filter((s): s is string => typeof s === "string") : undefined;
       const pc = input.playerColor === "black" ? "b" : input.playerColor === "white" ? "w" : undefined;
       const r = store.setPosition({
@@ -325,7 +348,7 @@ export const tools: ToolDef[] = [
     name: "set_puzzle_queue",
     title: "Start a puzzle drill",
     description:
-      "Start a drill: 3-5 puzzles the app serves one by one, grades against the solution, auto-plays replies, awards XP and records results per theme. Each puzzle: fen, title, goal, optional hint, theme, and a SAN `solution` (human's move first, alternating). Invalid puzzles are rejected individually with the reason. Read results later in get_game_state.drill.",
+      "Start a drill: 3-5 puzzles the app serves one by one, grades against the solution, auto-plays replies, awards XP and records results per theme. Each puzzle: fen, title, goal, optional hint, theme, and a SAN `solution` (human's move first, alternating). Invalid puzzles are rejected individually. After calling it, END YOUR TURN: the human solves on the board and tells you when done; then read get_game_state.drill.",
     inputSchema: {
       type: "object",
       properties: {
@@ -347,11 +370,14 @@ export const tools: ToolDef[] = [
             required: ["fen", "title", "goal", "solution"],
           },
         },
+        cancelDrill: { type: "boolean", description: "Set true to replace an active drill on purpose." },
       },
       required: ["puzzles"],
       additionalProperties: false,
     },
     execute: (input) => {
+      const guard = drillGuard(input);
+      if (guard) return guard;
       const raw = Array.isArray(input.puzzles) ? input.puzzles : [];
       const accepted: PuzzleSpec[] = [];
       const rejected: { index: number; title: string; error: string }[] = [];
@@ -382,7 +408,7 @@ export const tools: ToolDef[] = [
         drillId: drill.id,
         accepted: accepted.length,
         rejected,
-        next: "The human solves the drill on the board now. When they come back, call get_game_state and read `drill.results`.",
+        next: "Done: the human solves the drill on the board now. End your turn immediately (do not wait, poll or change the board). When they say they are done, call get_game_state and read `drill.results`.",
       };
     },
   },
