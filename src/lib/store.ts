@@ -83,6 +83,7 @@ export function initialState(): AppState {
     lastMoveAt: 0,
     engineStatus: "off",
     lastEval: null,
+    lastReview: null,
     registeredTools: [],
   };
 }
@@ -209,6 +210,7 @@ class Store {
       const moverAfter = after ? -after.score : afterC.isCheckmate() ? 10000 : 0;
       const loss = Math.max(0, moverBefore - moverAfter);
       const best = before.bestMove;
+      this.set({ lastReview: { san, cpLoss: loss, bestMove: best, evalAfter: formatScore(after ? after.scoreWhite : before.scoreWhite), fenBefore } });
       this.pushEvent("engine_review", `${san}: ${loss >= 100 ? `lost ${(loss / 100).toFixed(1)} pawns` : "fine"}${best && best !== san ? `, best was ${best}` : ""} (eval ${formatScore(after ? after.scoreWhite : before.scoreWhite)})`, {
         san,
         cpLoss: loss,
@@ -493,6 +495,7 @@ class Store {
       lastMoveAt: Date.now(),
       notes: [],
       drill: null,
+      lastReview: null,
     });
     this.pushEvent("new_game", `New game started. Player is ${merged.playerColor === "w" ? "White" : "Black"}, opponent: ${merged.opponent}.`);
     this.maybeScheduleBot();

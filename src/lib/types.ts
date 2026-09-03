@@ -210,4 +210,6 @@ export interface AppState {
   registeredTools: string[];
   /** Latest engine evaluation of the current position (White's perspective, centipawns, mate folded). */
   lastEval: { fen: string; scoreWhite: number; depth: number; bestMove: string | null } | null;
+  /** Engine verdict on the human's most recent move. */
+  lastReview: { san: string; cpLoss: number; bestMove: string | null; evalAfter: string; fenBefore: string } | null;
 }
