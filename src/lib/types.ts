@@ -161,4 +161,5 @@ export interface AppState {
   toolLog: ToolCallRecord[];
   thinking: boolean;
   agentWaiting: boolean;
+  gameStartedAt: number;
 }

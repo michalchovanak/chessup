@@ -73,6 +73,7 @@ export function initialState(): AppState {
     toolLog: [],
     thinking: false,
     agentWaiting: false,
+    gameStartedAt: 0,
   };
 }
 
@@ -120,11 +121,11 @@ class Store {
     if (typeof window === "undefined" || !this.state.hydrated) return;
     if (this.persistTimer) clearTimeout(this.persistTimer);
     this.persistTimer = setTimeout(() => {
-      const { profile, lesson, fen, startFen, moves, settings, puzzle, notes, gameRecorded } = this.state;
+      const { profile, lesson, fen, startFen, moves, settings, puzzle, notes, gameRecorded, gameStartedAt } = this.state;
       try {
         localStorage.setItem(
           STORAGE_KEY,
-          JSON.stringify({ profile, lesson, fen, startFen, moves, settings, puzzle, notes, gameRecorded })
+          JSON.stringify({ profile, lesson, fen, startFen, moves, settings, puzzle, notes, gameRecorded, gameStartedAt })
         );
       } catch {
         /* ignore quota errors */
@@ -149,6 +150,7 @@ class Store {
           puzzle: saved.puzzle ?? null,
           notes: saved.notes ?? [],
           gameRecorded: saved.gameRecorded ?? false,
+          gameStartedAt: saved.gameStartedAt ?? 0,
         };
       }
     } catch {
@@ -310,11 +312,11 @@ class Store {
     const c = this.chess();
     const status = gameStatus(c);
     if (!status.over || this.state.gameRecorded || this.state.puzzle) return;
-    const { playerColor, opponent } = this.state.settings;
+    const { playerColor } = this.state.settings;
     const profile = structuredClone(this.state.profile);
     profile.games.played += 1;
     let outcome: "won" | "lost" | "drawn" = "drawn";
-    if (status.result === "1/2-1/2" || opponent === "human") outcome = "drawn";
+    if (status.result === "1/2-1/2") outcome = "drawn";
     else if ((status.result === "1-0" && playerColor === "w") || (status.result === "0-1" && playerColor === "b")) outcome = "won";
     else outcome = "lost";
     profile.games[outcome] += 1;
@@ -397,6 +399,7 @@ class Store {
       arrows: [],
       gameRecorded: false,
       thinking: false,
+      gameStartedAt: Date.now(),
     });
     this.pushEvent("new_game", `New game started. Player is ${merged.playerColor === "w" ? "White" : "Black"}, opponent: ${merged.opponent}.`);
     this.maybeScheduleBot();
@@ -461,7 +464,8 @@ class Store {
       arrows: [],
       gameRecorded: false,
       thinking: false,
-      settings: { ...this.state.settings, playerColor, opponent: isPuzzle ? this.state.settings.opponent : this.state.settings.opponent },
+      gameStartedAt: Date.now(),
+      settings: { ...this.state.settings, playerColor },
     });
     this.pushEvent("position_set", isPuzzle ? `Puzzle "${puzzle!.title}" started.` : "Position set.");
     this.maybeScheduleBot();

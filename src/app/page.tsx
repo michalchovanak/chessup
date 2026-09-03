@@ -12,12 +12,14 @@ import { WebMcpBridge } from "@/components/WebMcpBridge";
 import { StartPanel } from "@/components/StartPanel";
 import { Onboarding } from "@/components/Onboarding";
 import { CoachProtocol } from "@/components/CoachProtocol";
+import { GameOverModal } from "@/components/GameOverModal";
 
 export default function Home() {
   return (
     <main className="min-h-screen">
       <WebMcpBridge />
       <Onboarding />
+      <GameOverModal />
       <Header />
       <div className="mx-auto max-w-[1400px] px-5 md:px-8 py-6 grid gap-6 lg:grid-cols-[minmax(0,1fr)_380px] xl:grid-cols-[minmax(0,1fr)_420px]">
         <div className="min-w-0">
