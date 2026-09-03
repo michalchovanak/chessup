@@ -12,7 +12,6 @@ export function GameControls() {
   const st = useApp();
   const chess = useMemo(() => new Chess(st.fen), [st.fen]);
   const status = gameStatus(chess);
-  const [copied, setCopied] = useState(false);
 
   const humanTurn = st.settings.opponent === "human" || chess.turn() === st.settings.playerColor;
   const coachTurn = st.settings.opponent === "agent" && !humanTurn && !status.over;
@@ -21,14 +20,21 @@ export function GameControls() {
     : `${chess.turn() === "w" ? "White" : "Black"} to move${status.reason === "check" ? " · check!" : ""}`;
 
   return (
-    <div className="mt-8 space-y-3">
-      <div className="flex items-center gap-3 text-sm">
-        <span className={`h-3 w-3 rounded-full border ${chess.turn() === "w" ? "bg-slate-100 border-slate-300" : "bg-slate-900 border-slate-600"}`} />
-        <span className="text-slate-200 font-medium">{turnLabel}</span>
-        <span className="ml-auto text-xs text-slate-500">
-          You play {st.settings.playerColor === "w" ? "White" : "Black"} vs{" "}
-          {st.settings.opponent === "agent" ? "the coach" : st.settings.opponent === "bot" ? `the bot (${["easy", "normal", "hard"][st.settings.botLevel - 1]})` : "yourself"}
+    <div className="mt-2.5 space-y-2.5">
+      <div className="panel-surface flex min-h-12 flex-wrap items-center gap-2 rounded-xl px-3 py-2 text-sm">
+        <span className={`grid h-6 w-6 shrink-0 place-items-center rounded-full border ${chess.turn() === "w" ? "border-stone-300/50 bg-stone-100" : "border-stone-600 bg-stone-950"}`}>
+          <span className={`h-1.5 w-1.5 rounded-full ${chess.turn() === "w" ? "bg-stone-800" : "bg-stone-200"}`} />
         </span>
+        <div className="min-w-0">
+          <div className="font-medium text-stone-100">{turnLabel}</div>
+        </div>
+        <div className="ml-auto flex items-center gap-1.5">
+          <button onClick={() => store.undoMove(st.settings.opponent === "human" ? 1 : Math.min(2, st.moves.length))} disabled={!st.moves.length} className="btn border-transparent bg-transparent px-2.5 text-slate-400">
+            Undo
+          </button>
+          <button onClick={() => store.newGame({ playerColor: st.settings.playerColor })} className="btn px-2.5">New game</button>
+          <GameMenu />
+        </div>
       </div>
 
       <CoachCaption />
@@ -39,25 +45,6 @@ export function GameControls() {
           Your coach is waiting for your move.
         </div>
       )}
-      <div className="flex flex-wrap gap-2">
-        <button onClick={() => store.newGame({ playerColor: "w" })} className="btn">New game · White</button>
-        <button onClick={() => store.newGame({ playerColor: "b" })} className="btn">New game · Black</button>
-        <button onClick={() => store.undoMove(st.settings.opponent === "human" ? 1 : Math.min(2, st.moves.length))} disabled={!st.moves.length} className="btn">
-          Undo
-        </button>
-        <OpponentPicker />
-        <button
-          onClick={() => {
-            navigator.clipboard?.writeText(st.fen);
-            setCopied(true);
-            setTimeout(() => setCopied(false), 1200);
-          }}
-          className="btn ml-auto"
-          title={st.fen}
-        >
-          {copied ? "Copied" : "Copy FEN"}
-        </button>
-      </div>
     </div>
   );
 }
@@ -68,57 +55,57 @@ const LEVELS: { level: 1 | 2 | 3; label: string }[] = [
   { level: 3, label: "Hard" },
 ];
 
-function OpponentPicker() {
+function GameMenu() {
   const st = useApp();
-  const [more, setMore] = useState(false);
+  const [open, setOpen] = useState(false);
   const { opponent, botLevel } = st.settings;
-  const special = opponent !== "bot";
+  const opponentLabel = opponent === "agent" ? "Coach" : opponent === "human" ? "Myself" : LEVELS[botLevel - 1].label;
 
   const setOpponent = (o: Opponent, level?: 1 | 2 | 3) => {
     store.setSettings({ opponent: o, ...(level ? { botLevel: level } : {}) });
-    setMore(false);
+    setOpen(false);
   };
 
   return (
-    <div className="relative flex items-center gap-1">
-      <div className="flex items-center rounded-lg border border-white/10 bg-white/[0.04] p-0.5">
-        <span className="px-2 text-[11px] text-slate-500">Bot</span>
-        {LEVELS.map((l) => {
-          const active = opponent === "bot" && botLevel === l.level;
-          return (
-            <button
-              key={l.level}
-              onClick={() => setOpponent("bot", l.level)}
-              className={`rounded-md px-2.5 py-1 text-xs font-medium transition ${active ? "bg-amber-400/20 text-amber-200" : "text-slate-400 hover:text-slate-200"}`}
-            >
-              {l.label}
-            </button>
-          );
-        })}
-      </div>
+    <div className="relative">
       <button
-        onClick={() => setMore((v) => !v)}
-        className={`btn px-2 ${special ? "border-emerald-400/40 text-emerald-200" : ""}`}
-        title="More opponents"
+        onClick={() => setOpen((v) => !v)}
+        className="btn gap-1.5 px-2.5 text-slate-300"
+        aria-label="Game settings"
+        aria-expanded={open}
+        aria-haspopup="menu"
       >
-        {opponent === "agent" ? "Sparring" : opponent === "human" ? "Myself" : "⋯"}
+        {st.settings.playerColor === "w" ? "White" : "Black"} · {opponentLabel}
+        <span className="text-[9px] text-slate-600">▾</span>
       </button>
-      {more && (
-        <div className="absolute left-0 top-full z-20 mt-1 w-64 rounded-xl border border-white/10 bg-[#141a26] p-1.5 shadow-2xl">
-          <MenuItem active={opponent === "agent"} onClick={() => setOpponent("agent")} title="Sparring with the coach" desc={st.agentConnected ? "The agent plays against you. Works while you are not chatting." : "Needs a connected coach."} />
-          <MenuItem active={opponent === "human"} onClick={() => setOpponent("human")} title="Play myself" desc="Both sides by hand, for analysis." />
-          {special && <MenuItem active={false} onClick={() => setOpponent("bot")} title="Back to the bot" desc="Instant replies." />}
+      {open && (
+        <div className="popover-menu absolute bottom-full right-0 z-20 mb-1.5 w-64 rounded-xl border border-white/10 bg-[#161a17] p-2 shadow-2xl" role="menu">
+          <div className="px-2 pb-1.5 pt-1 text-[10px] font-medium uppercase tracking-[0.12em] text-slate-600">Play as</div>
+          <div className="grid grid-cols-2 gap-1">
+            <Choice active={st.settings.playerColor === "w"} onClick={() => { store.newGame({ playerColor: "w" }); setOpen(false); }}>White</Choice>
+            <Choice active={st.settings.playerColor === "b"} onClick={() => { store.newGame({ playerColor: "b" }); setOpen(false); }}>Black</Choice>
+          </div>
+          <div className="mt-2 border-t border-white/[0.07] px-2 pb-1.5 pt-2.5 text-[10px] font-medium uppercase tracking-[0.12em] text-slate-600">Opponent</div>
+          <div className="grid grid-cols-3 gap-1">
+            {LEVELS.map((l) => (
+              <Choice key={l.level} active={opponent === "bot" && botLevel === l.level} onClick={() => setOpponent("bot", l.level)}>{l.label}</Choice>
+            ))}
+          </div>
+          <div className="mt-1 grid grid-cols-2 gap-1">
+            <Choice active={opponent === "agent"} onClick={() => setOpponent("agent")}>Coach</Choice>
+            <Choice active={opponent === "human"} onClick={() => setOpponent("human")}>Myself</Choice>
+          </div>
+          {!st.agentConnected && opponent !== "agent" && <p className="px-2 pt-2 text-[10px] leading-relaxed text-slate-600">Coach mode needs WebMCP.</p>}
         </div>
       )}
     </div>
   );
 }
 
-function MenuItem({ active, onClick, title, desc }: { active: boolean; onClick: () => void; title: string; desc: string }) {
+function Choice({ active, onClick, children }: { active: boolean; onClick: () => void; children: React.ReactNode }) {
   return (
-    <button onClick={onClick} className={`w-full rounded-lg px-3 py-2 text-left hover:bg-white/5 ${active ? "bg-white/5" : ""}`}>
-      <div className="text-sm text-slate-100">{title}</div>
-      <div className="text-[11px] text-slate-500">{desc}</div>
+    <button onClick={onClick} role="menuitem" className={`rounded-lg px-2 py-2 text-xs font-medium transition-colors ${active ? "bg-amber-300 text-stone-950" : "text-slate-400 hover:bg-white/5 hover:text-slate-200"}`}>
+      {children}
     </button>
   );
 }

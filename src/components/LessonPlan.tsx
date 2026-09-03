@@ -1,5 +1,5 @@
 "use client";
-import { Panel, Empty } from "./Panel";
+import { Panel } from "./Panel";
 import { useApp } from "@/lib/useApp";
 import { store } from "@/lib/store";
 import type { LessonStatus } from "@/lib/types";
@@ -10,16 +10,14 @@ export function LessonPlan() {
   const st = useApp();
   const { title, steps } = st.lesson;
   const doneCount = steps.filter((s) => s.status === "done").length;
+  if (steps.length === 0) return null;
   return (
     <Panel
       title="Lesson plan"
       badge={steps.length ? <span className="text-[10px] text-slate-500">{doneCount}/{steps.length}</span> : null}
       action={steps.length ? <button onClick={() => store.clearLesson()} className="text-[11px] text-slate-500 hover:text-slate-300">clear</button> : null}
     >
-      {steps.length === 0 ? (
-        <Empty>The coach will build a plan here from your profile and update it as you progress.</Empty>
-      ) : (
-        <>
+      <>
           {title && <div className="text-sm font-semibold text-slate-100 mb-2">{title}</div>}
           <ol className="space-y-1.5">
             {steps.map((s, i) => (
@@ -51,8 +49,7 @@ export function LessonPlan() {
               </li>
             ))}
           </ol>
-        </>
-      )}
+      </>
     </Panel>
   );
 }

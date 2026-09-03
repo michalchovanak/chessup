@@ -37,52 +37,34 @@ export function StartPanel() {
           </button>
         }
       >
-        <p className="text-sm text-slate-300 leading-relaxed">
-          Play the built-in bot right away. To get a coach that reviews your games, builds drills for your weak spots and keeps a lesson plan, open this page inside an agent browser:
+        <p className="text-sm leading-relaxed text-slate-300">
+          The board works solo. Open it in ChatGPT to add a coach that can see your moves, mark mistakes and build drills from them.
         </p>
-        <ol className="mt-3 space-y-2 text-sm text-slate-300">
-          <li className="flex gap-2.5">
-            <Step n={1} />
-            <span>
-              In the <b className="text-slate-100">ChatGPT app</b>, open a new browser tab (the + next to your tabs) and paste this URL. Chrome works too with{" "}
-              <code className="text-[11px] text-amber-200/90">chrome://flags/#enable-webmcp-testing</code>.
-            </span>
-          </li>
-          <li className="flex gap-2.5">
-            <Step n={2} />
-            <span>Wait for the header pill to turn green: <b className="text-emerald-300">Agent connected</b>.</span>
-          </li>
-          <li className="flex gap-2.5">
-            <Step n={3} />
-            <span>Tell the agent what you want, in any language. It plays and coaches through the board.</span>
-          </li>
-        </ol>
-        <div className="mt-3 grid grid-cols-[1fr_auto] gap-2">
-          <a href={chatgptDeeplink(url)} className="btn btn-primary text-center py-2">
-            Open in ChatGPT ↗
+        <div className="mt-4 grid grid-cols-[1fr_auto] gap-2">
+          <a href={chatgptDeeplink(url)} className="btn btn-primary py-2.5 text-center text-sm">
+            Open with a coach ↗
           </a>
-          <button onClick={() => copy("url", url)} className="btn py-2" title="Copy the link to paste into any agent browser">
+          <button onClick={() => copy("url", url)} className="btn py-2.5" title="Copy the link to paste into any agent browser">
             {copied === "url" ? "Copied ✓" : "Copy link"}
           </button>
         </div>
-        <p className="mt-2 text-[11px] text-slate-500">Requires the ChatGPT desktop app with site tools (GPT-5.6 Sol or Terra).</p>
       </Panel>
     );
   }
 
   if (agentActive && !expanded) {
     return (
-      <div className="flex items-center gap-3 rounded-2xl border border-white/[0.06] bg-[var(--panel)] px-4 py-2.5 text-xs text-slate-400">
-        <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
-        Coach connected. Talk to it in the chat whenever you want a review, a drill or a lesson.
-        <button onClick={() => setExpanded(true)} className="ml-auto text-slate-500 hover:text-amber-200">prompts ▾</button>
+      <div className="panel-surface flex items-center gap-3 rounded-2xl px-4 py-3 text-xs text-slate-400">
+        <span className="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-emerald-400/10 text-emerald-300">✓</span>
+        <span><b className="font-medium text-slate-200">Coach ready.</b> Ask for a review, lesson or drill in chat.</span>
+        <button onClick={() => setExpanded(true)} className="ml-auto shrink-0 text-slate-500 transition-colors hover:text-amber-200">Show prompts</button>
       </div>
     );
   }
 
   return (
     <Panel
-      title="Start"
+      title="Coach"
       badge={<span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />}
       action={
         <span className="flex gap-3">
@@ -91,34 +73,36 @@ export function StartPanel() {
         </span>
       }
     >
-      <p className="text-sm text-slate-300 leading-relaxed">
-        Play the bot on the board whenever you like. Your coach acts when you talk to it in the chat; click a card to copy a ready-made message:
-      </p>
-      <ul className="mt-3 grid gap-2">
-        {QUICK_PROMPTS.map((q) => (
-          <li key={q.id} onClick={() => copy(q.id, q.prompt)} className="group flex cursor-pointer items-start gap-3 rounded-xl border border-white/[0.06] bg-white/[0.02] px-3 py-2.5 hover:border-amber-400/30 transition">
-            <span className="text-lg leading-6">{q.emoji}</span>
-            <div className="min-w-0 flex-1">
-              <div className="text-sm font-medium text-slate-100">{q.title}</div>
-              <div className="text-xs text-slate-400 leading-relaxed">{q.blurb}</div>
-            </div>
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                copy(q.id, q.prompt);
-              }}
-              className="shrink-0 rounded-lg border border-white/10 px-2 py-1 text-[11px] text-slate-300 hover:bg-white/10"
-              title={q.prompt}
-            >
-              {copied === q.id ? "Copied ✓" : "Copy"}
-            </button>
-          </li>
-        ))}
-      </ul>
+      <p className="text-sm leading-relaxed text-slate-300">Ask in the chat beside the board. The coach can review the game, mark the board and create practice.</p>
+      <button
+        onClick={() => copy(QUICK_PROMPTS[0].id, QUICK_PROMPTS[0].prompt)}
+        className="mt-3 flex w-full items-center gap-3 rounded-xl border border-amber-300/20 bg-amber-300/[0.06] p-3 text-left transition-colors hover:border-amber-300/35 hover:bg-amber-300/[0.09] active:scale-[0.985]"
+      >
+        <span className="text-base">{QUICK_PROMPTS[0].emoji}</span>
+        <span className="min-w-0 flex-1">
+          <span className="block text-sm font-medium text-stone-100">{QUICK_PROMPTS[0].title}</span>
+          <span className="block text-[11px] text-slate-500">{QUICK_PROMPTS[0].blurb}</span>
+        </span>
+        <span className={`text-[10px] font-medium ${copied === QUICK_PROMPTS[0].id ? "text-emerald-300" : "text-amber-200/70"}`}>
+          {copied === QUICK_PROMPTS[0].id ? "Copied ✓" : "Copy"}
+        </span>
+      </button>
+      <details className="group mt-2">
+        <summary className="cursor-pointer list-none py-1 text-[11px] text-slate-500 transition-colors hover:text-slate-300">More ideas <span className="inline-block transition-transform group-open:rotate-180">↓</span></summary>
+        <ul className="mt-1 divide-y divide-white/[0.06] border-t border-white/[0.06]">
+          {QUICK_PROMPTS.slice(1).map((q) => (
+            <li key={q.id}>
+              <button
+                onClick={() => copy(q.id, q.prompt)}
+                className="flex w-full items-center gap-2 py-2.5 text-left text-xs text-slate-400 transition-colors hover:text-slate-200"
+                title={q.prompt}
+              >
+                <span>{q.emoji}</span><span>{q.title}</span><span className="ml-auto text-slate-600">{copied === q.id ? "Copied ✓" : "Copy"}</span>
+              </button>
+            </li>
+          ))}
+        </ul>
+      </details>
     </Panel>
   );
-}
-
-function Step({ n }: { n: number }) {
-  return <span className="mt-0.5 h-5 w-5 shrink-0 grid place-items-center rounded-full bg-amber-400/15 text-[11px] font-bold text-amber-200">{n}</span>;
 }

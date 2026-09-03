@@ -1,6 +1,5 @@
 "use client";
 import { useEffect, useRef } from "react";
-import { Panel, Empty } from "./Panel";
 import { useApp } from "@/lib/useApp";
 
 export function MoveLog() {
@@ -24,26 +23,29 @@ export function MoveLog() {
     }
   });
 
+  if (rows.length === 0) return null;
+
   return (
-    <Panel title="Moves" badge={<span className="text-[10px] text-slate-500">{st.moves.length}</span>}>
-      {rows.length === 0 ? (
-        <Empty>No moves yet. Click or drag a piece.</Empty>
-      ) : (
-        <div ref={ref} className="max-h-40 overflow-y-auto font-mono text-sm pr-1">
-          <table className="w-full">
-            <tbody>
-              {rows.map((r) => (
-                <tr key={r.n} className="border-b border-white/[0.04] last:border-0">
-                  <td className="w-9 py-1 text-slate-600">{r.n}.</td>
-                  <td className="py-1"><MoveCell m={r.w} /></td>
-                  <td className="py-1"><MoveCell m={r.b} /></td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
-    </Panel>
+    <details className="panel-surface group rounded-xl">
+      <summary className="flex cursor-pointer list-none items-center gap-2 px-4 py-3 text-xs text-slate-400 transition-colors hover:text-slate-200">
+        <span>Move history</span>
+        <span className="text-slate-600">{st.moves.length}</span>
+        <span className="ml-auto text-[9px] text-slate-600 transition-transform group-open:rotate-180">↓</span>
+      </summary>
+      <div ref={ref} className="max-h-48 overflow-y-auto border-t border-white/[0.06] px-4 py-3 font-mono text-sm">
+        <table className="w-full">
+          <tbody>
+            {rows.map((r) => (
+              <tr key={r.n} className="border-b border-white/[0.04] last:border-0">
+                <td className="w-9 py-1 text-slate-600">{r.n}.</td>
+                <td className="py-1"><MoveCell m={r.w} /></td>
+                <td className="py-1"><MoveCell m={r.b} /></td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </details>
   );
 }
 

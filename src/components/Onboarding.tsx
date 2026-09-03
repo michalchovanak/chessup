@@ -1,6 +1,6 @@
 "use client";
 import { useSyncExternalStore } from "react";
-import { QUICK_PROMPTS, chatgptDeeplink } from "@/lib/prompts";
+import { chatgptDeeplink } from "@/lib/prompts";
 
 const KEY = "chessup:onboarded";
 let forced = false;
@@ -42,56 +42,50 @@ export function Onboarding() {
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-50 grid place-items-center bg-black/70 backdrop-blur-sm p-4" onClick={close}>
+    <div className="fixed inset-0 z-50 grid place-items-center overflow-y-auto bg-black/75 p-4 backdrop-blur-md" onClick={close}>
       <div
-        className="w-full max-w-xl rounded-3xl border border-white/10 bg-[#0f131c] p-6 md:p-8 shadow-2xl"
+        className="modal-card relative my-auto max-h-[calc(100svh-2rem)] w-full max-w-lg overflow-y-auto rounded-2xl border border-white/10 bg-[#111412] p-5 shadow-2xl sm:p-6"
         onClick={(e) => e.stopPropagation()}
         role="dialog"
         aria-modal="true"
         aria-labelledby="onboarding-title"
       >
-        <div className="flex items-center gap-3">
-          <div className="h-11 w-11 rounded-2xl bg-gradient-to-br from-amber-300 to-amber-600 grid place-items-center text-slate-950 text-2xl">♞</div>
+        <button onClick={close} className="btn absolute right-4 top-4 h-8 min-h-8 w-8 px-0 text-slate-500" aria-label="Close guide">×</button>
+
+        <div className="flex items-center gap-3 pr-10">
+          <div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-amber-300 text-xl text-stone-950">♞</div>
           <div>
-            <h1 id="onboarding-title" className="text-xl font-semibold tracking-tight">Welcome to ChessUp</h1>
-            <p className="text-sm text-slate-400">A chess board your AI browser agent can coach you on.</p>
+            <h1 id="onboarding-title" className="text-xl font-semibold tracking-[-0.025em] text-stone-100">A board and a coach, together.</h1>
           </div>
         </div>
 
-        <div className="mt-6 grid gap-3">
-          <Row n={1} title="Play right away">
-            Click or drag pieces. The built-in bot answers instantly, and the app records your moves, mistakes and results in this browser.
-          </Row>
-          <Row n={2} title="Open the page inside an agent for a coach">
-            <a href={chatgptDeeplink(typeof window !== "undefined" ? window.location.origin + "/" : "https://chessup-gamma.vercel.app/")} className="btn btn-primary inline-block mb-2">Open in ChatGPT ↗</a>
-            <br />
-            Or in the <b className="text-slate-100">ChatGPT app</b> open a new browser tab (the + next to your tabs) and paste the link. In <b className="text-slate-100">Chrome</b>, enable <code className="text-[11px] text-amber-200/90">chrome://flags/#enable-webmcp-testing</code>. The header pill turns green when the coach is connected.
-          </Row>
-          <Row n={3} title="Talk to the coach when you want it">
-            It only acts when you message it, in any language: &ldquo;{QUICK_PROMPTS[0].prompt}&rdquo; It reads everything that happened on the board, draws arrows, builds drills for your weak spots, keeps a lesson plan and awards XP and badges.
-          </Row>
-        </div>
-
-        <p className="mt-5 text-xs text-slate-500 leading-relaxed">
-          Want the coach to play against you live? Set the opponent to &ldquo;coach (live sparring)&rdquo;. It works while you are not chatting. The <b>Dev tools</b> panel at the bottom lets you call any tool by hand.
+        <p className="mt-4 text-sm leading-relaxed text-slate-400">
+          Play normally. When you ask, the agent can read the game, explain mistakes on the board and turn them into a personal drill.
         </p>
 
-        <div className="mt-6 flex justify-end gap-2">
-          <button onClick={close} className="btn btn-primary px-4 py-2 text-sm">Let&apos;s go</button>
+        <ol className="mt-5 space-y-1 rounded-xl border border-white/[0.07] bg-black/10 p-2">
+          <Row n={1} title="Play a game" description="The board keeps the full move history." />
+          <Row n={2} title="Ask in chat" description="The coach reads the current position and your profile." />
+          <Row n={3} title="Practise here" description="Arrows, lessons and puzzles appear on the board." />
+        </ol>
+
+        <div className="mt-5 flex flex-col-reverse gap-2 border-t border-white/[0.06] pt-4 sm:flex-row sm:justify-end">
+          <a href={chatgptDeeplink(typeof window !== "undefined" ? window.location.origin + "/" : "https://chessup-gamma.vercel.app/")} className="btn text-sm">Open in ChatGPT ↗</a>
+          <button onClick={close} className="btn btn-primary px-5 text-sm">Continue</button>
         </div>
       </div>
     </div>
   );
 }
 
-function Row({ n, title, children }: { n: number; title: string; children: React.ReactNode }) {
+function Row({ n, title, description }: { n: number; title: string; description: string }) {
   return (
-    <div className="flex gap-3 rounded-2xl border border-white/[0.06] bg-white/[0.02] p-4">
-      <span className="h-7 w-7 shrink-0 grid place-items-center rounded-full bg-amber-400/15 text-sm font-bold text-amber-200">{n}</span>
-      <div>
-        <div className="text-sm font-semibold text-slate-100">{title}</div>
-        <p className="mt-1 text-sm text-slate-400 leading-relaxed">{children}</p>
+    <li className="flex items-center gap-3 rounded-lg px-2 py-2">
+      <span className="grid h-6 w-6 shrink-0 place-items-center rounded-full bg-white/[0.05] text-[10px] font-medium text-slate-400">{n}</span>
+      <div className="min-w-0">
+        <span className="text-sm font-medium text-slate-200">{title}</span>
+        <span className="ml-2 text-xs text-slate-500">{description}</span>
       </div>
-    </div>
+    </li>
   );
 }

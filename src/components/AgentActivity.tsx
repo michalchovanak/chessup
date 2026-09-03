@@ -1,12 +1,13 @@
 "use client";
 import { useState } from "react";
-import { Panel, Empty } from "./Panel";
+import { Panel } from "./Panel";
 import { useApp } from "@/lib/useApp";
 
 export function AgentActivity() {
   const st = useApp();
   const [open, setOpen] = useState<string | null>(null);
   const [shown, setShown] = useState(false);
+  if (st.toolLog.length === 0) return null;
   return (
     <Panel
       title="Agent activity"
@@ -15,8 +16,6 @@ export function AgentActivity() {
     >
       {!shown ? (
         <p className="text-xs text-slate-500">Every WebMCP tool call the coach makes, with input and output.</p>
-      ) : st.toolLog.length === 0 ? (
-        <Empty>Every WebMCP tool call the agent makes shows up here, with its input and output.</Empty>
       ) : (
         <ul className="max-h-64 overflow-y-auto space-y-1 pr-1">
           {st.toolLog.map((t) => (

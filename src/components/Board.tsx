@@ -5,8 +5,8 @@ import { Chess, type Square } from "chess.js";
 import { store, ANNO_COLORS } from "@/lib/store";
 import { useApp } from "@/lib/useApp";
 
-const LIGHT = "#e6e9f0";
-const DARK = "#6b7f9e";
+const LIGHT = "#eee7d8";
+const DARK = "#826b50";
 
 export function Board() {
   const st = useApp();
@@ -37,7 +37,7 @@ export function Board() {
     }
     if (chess.isCheck()) {
       const king = findKing(chess, chess.turn());
-      if (king) styles[king] = { ...styles[king], background: "radial-gradient(circle, rgba(248,113,113,0.9) 0%, rgba(248,113,113,0.5) 55%, transparent 75%)" };
+      if (king) styles[king] = { ...styles[king], backgroundImage: "radial-gradient(circle, rgba(248,113,113,0.9) 0%, rgba(248,113,113,0.5) 55%, transparent 75%)" };
     }
     for (const h of st.highlights) {
       styles[h.square] = { ...styles[h.square], boxShadow: `inset 0 0 0 4px ${ANNO_COLORS[h.color]}`, backgroundColor: ANNO_COLORS[h.color].replace("0.85", "0.28") };
@@ -47,7 +47,7 @@ export function Board() {
       for (const t of legalTargets) {
         styles[t.to] = {
           ...styles[t.to],
-          background: t.capture
+          backgroundImage: t.capture
             ? "radial-gradient(circle, transparent 58%, rgba(15, 23, 42, 0.45) 60%)"
             : "radial-gradient(circle, rgba(15, 23, 42, 0.45) 22%, transparent 24%)",
         };
@@ -98,35 +98,37 @@ export function Board() {
   return (
     <div className="relative">
       <div
-        className="rounded-2xl overflow-hidden shadow-[0_30px_80px_-20px_rgba(0,0,0,0.7)] ring-1 ring-white/10"
+        className="board-frame overflow-hidden rounded-xl p-1"
         style={{ opacity: canInteract || !humanTurn ? 1 : 0.92 }}
       >
-        <Chessboard
-          options={{
-            id: "chessup-board",
-            position: st.fen,
-            boardOrientation: st.settings.playerColor === "w" ? "white" : "black",
-            lightSquareStyle: { backgroundColor: LIGHT },
-            darkSquareStyle: { backgroundColor: DARK },
-            squareStyles,
-            arrows,
-            allowDrawingArrows: true,
-            animationDurationInMs: 180,
-            showNotation: true,
-            darkSquareNotationStyle: { color: LIGHT, fontSize: 11, fontWeight: 600 },
-            lightSquareNotationStyle: { color: DARK, fontSize: 11, fontWeight: 600 },
-            allowDragging: canInteract,
-            canDragPiece: ({ piece }) => canInteract && piece.pieceType[0] === chess.turn(),
-            onPieceDrop: ({ sourceSquare, targetSquare }) => (targetSquare ? tryMove(sourceSquare as Square, targetSquare as Square) : false),
-            onSquareClick,
-            onPieceClick: ({ square, piece }) => square && onSquareClick({ square, piece }),
-            dropSquareStyle: { boxShadow: "inset 0 0 0 3px rgba(245,185,66,0.9)" },
-          }}
-        />
+        <div className="overflow-hidden rounded-lg">
+          <Chessboard
+            options={{
+              id: "chessup-board",
+              position: st.fen,
+              boardOrientation: st.settings.playerColor === "w" ? "white" : "black",
+              lightSquareStyle: { backgroundColor: LIGHT },
+              darkSquareStyle: { backgroundColor: DARK },
+              squareStyles,
+              arrows,
+              allowDrawingArrows: true,
+              animationDurationInMs: 180,
+              showNotation: true,
+              darkSquareNotationStyle: { color: LIGHT, fontSize: 11, fontWeight: 700 },
+              lightSquareNotationStyle: { color: DARK, fontSize: 11, fontWeight: 700 },
+              allowDragging: canInteract,
+              canDragPiece: ({ piece }) => canInteract && piece.pieceType[0] === chess.turn(),
+              onPieceDrop: ({ sourceSquare, targetSquare }) => (targetSquare ? tryMove(sourceSquare as Square, targetSquare as Square) : false),
+              onSquareClick,
+              onPieceClick: ({ square, piece }) => square && onSquareClick({ square, piece }),
+              dropSquareStyle: { boxShadow: "inset 0 0 0 3px rgba(231,183,95,0.92)" },
+            }}
+          />
+        </div>
       </div>
       {st.thinking && (
-        <div className="absolute -bottom-7 left-0 text-xs text-slate-400 flex items-center gap-2">
-          <span className="inline-block h-2 w-2 rounded-full bg-amber-400 animate-pulse" />
+        <div className="absolute right-5 top-5 flex items-center gap-2 rounded-full border border-white/10 bg-black/70 px-3 py-1.5 text-[11px] font-medium text-stone-200 shadow-lg backdrop-blur-md">
+          <span className="inline-block h-1.5 w-1.5 rounded-full bg-amber-300 animate-pulse" />
           {st.puzzle ? "Opponent replies…" : "Bot is thinking…"}
         </div>
       )}
