@@ -1,0 +1,64 @@
+"use client";
+import { useMemo, useState } from "react";
+import { Chess } from "chess.js";
+import { store } from "@/lib/store";
+import { useApp } from "@/lib/useApp";
+import { gameStatus } from "@/lib/chessLogic";
+
+export function GameControls() {
+  const st = useApp();
+  const chess = useMemo(() => new Chess(st.fen), [st.fen]);
+  const status = gameStatus(chess);
+  const [copied, setCopied] = useState(false);
+
+  const turnLabel = status.over
+    ? `${status.result} · ${status.reason}`
+    : `${chess.turn() === "w" ? "White" : "Black"} to move${status.reason === "check" ? " · check!" : ""}`;
+
+  return (
+    <div className="mt-8 space-y-3">
+      <div className="flex items-center gap-3 text-sm">
+        <span className={`h-3 w-3 rounded-full border ${chess.turn() === "w" ? "bg-slate-100 border-slate-300" : "bg-slate-900 border-slate-600"}`} />
+        <span className="text-slate-200 font-medium">{turnLabel}</span>
+        <span className="ml-auto text-xs text-slate-500">
+          You play {st.settings.playerColor === "w" ? "White" : "Black"} vs{" "}
+          {st.settings.opponent === "agent" ? "agent" : st.settings.opponent === "bot" ? `bot L${st.settings.botLevel}` : "yourself"}
+        </span>
+      </div>
+
+      <div className="flex flex-wrap gap-2">
+        <button onClick={() => store.newGame({ playerColor: "w" })} className="btn">New game · White</button>
+        <button onClick={() => store.newGame({ playerColor: "b" })} className="btn">New game · Black</button>
+        <button onClick={() => store.undoMove(st.settings.opponent === "human" ? 1 : Math.min(2, st.moves.length))} disabled={!st.moves.length} className="btn">
+          Undo
+        </button>
+        <select
+          className="btn cursor-pointer"
+          value={st.settings.opponent === "bot" ? `bot${st.settings.botLevel}` : st.settings.opponent}
+          onChange={(e) => {
+            const v = e.target.value;
+            if (v.startsWith("bot")) store.setSettings({ opponent: "bot", botLevel: Number(v[3]) as 1 | 2 | 3 });
+            else store.setSettings({ opponent: v as "agent" | "human" });
+          }}
+        >
+          <option value="agent">Opponent: agent</option>
+          <option value="bot1">Opponent: bot · easy</option>
+          <option value="bot2">Opponent: bot · normal</option>
+          <option value="bot3">Opponent: bot · hard</option>
+          <option value="human">Opponent: myself</option>
+        </select>
+        <button
+          onClick={() => {
+            navigator.clipboard?.writeText(st.fen);
+            setCopied(true);
+            setTimeout(() => setCopied(false), 1200);
+          }}
+          className="btn ml-auto"
+          title={st.fen}
+        >
+          {copied ? "Copied" : "Copy FEN"}
+        </button>
+      </div>
+    </div>
+  );
+}
