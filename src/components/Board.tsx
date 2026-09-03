@@ -1,5 +1,5 @@
 "use client";
-import { useMemo, useState, type CSSProperties } from "react";
+import { useMemo, useRef, useState, type CSSProperties } from "react";
 import { Chessboard } from "react-chessboard";
 import { Chess, type Square } from "chess.js";
 import { store, ANNO_COLORS } from "@/lib/store";
@@ -10,7 +10,12 @@ const DARK = "#6b7f9e";
 
 export function Board() {
   const st = useApp();
-  const [selected, setSelected] = useState<Square | null>(null);
+  const [selected, setSelectedState] = useState<Square | null>(null);
+  const selectedRef = useRef<Square | null>(null);
+  const setSelected = (sq: Square | null) => {
+    selectedRef.current = sq;
+    setSelectedState(sq);
+  };
 
   const chess = useMemo(() => new Chess(st.fen), [st.fen]);
   const humanTurn = st.settings.opponent === "human" || chess.turn() === st.settings.playerColor;
@@ -63,20 +68,30 @@ export function Board() {
     return r.ok;
   }
 
+  const lastClick = useRef<{ sq: string; at: number }>({ sq: "", at: 0 });
+
   function onSquareClick({ square, piece }: { square: string; piece: { pieceType: string } | null }) {
     if (!canInteract) return;
     const sq = square as Square;
-    if (selected) {
-      if (sq === selected) {
+    // A click on a piece can reach us twice (piece + square handler); handle it once.
+    const now = performance.now();
+    if (lastClick.current.sq === sq && now - lastClick.current.at < 80) return;
+    lastClick.current = { sq, at: now };
+    // Read live state: several clicks can land before React re-renders.
+    const live = new Chess(store.getState().fen);
+    const cur = selectedRef.current;
+    if (cur) {
+      if (sq === cur) {
         setSelected(null);
         return;
       }
-      if (legalTargets.some((t) => t.to === sq)) {
-        tryMove(selected, sq);
+      const legal = live.moves({ square: cur, verbose: true }).some((m) => m.to === sq);
+      if (legal) {
+        tryMove(cur, sq);
         return;
       }
     }
-    if (piece && piece.pieceType[0] === chess.turn()) setSelected(sq);
+    if (piece && piece.pieceType[0] === live.turn()) setSelected(sq);
     else setSelected(null);
   }
 
@@ -104,7 +119,7 @@ export function Board() {
             canDragPiece: ({ piece }) => canInteract && piece.pieceType[0] === chess.turn(),
             onPieceDrop: ({ sourceSquare, targetSquare }) => (targetSquare ? tryMove(sourceSquare as Square, targetSquare as Square) : false),
             onSquareClick,
-            onPieceClick: ({ square, piece }) => onSquareClick({ square: square ?? "", piece }),
+            onPieceClick: ({ square, piece }) => square && onSquareClick({ square, piece }),
             dropSquareStyle: { boxShadow: "inset 0 0 0 3px rgba(245,185,66,0.9)" },
           }}
         />

@@ -14,7 +14,7 @@ Chess sites give everyone the same puzzles. A human coach watches *you*, notices
 
 ## Try it
 
-Live: **https://chessup.vercel.app** (replace with your deployment)
+Live: **https://chessup-gamma.vercel.app**
 
 1. Open the URL in **ChatGPT's browser**, or in **Chrome** with `chrome://flags/#enable-webmcp-testing` enabled.
 2. The header shows **"Agent connected"** when `modelContext` is detected and the tools are registered.
