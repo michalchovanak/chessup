@@ -1,3 +1,8 @@
+/**
+ * Page layout: board column on the left (eval bar, board, controls, move log, agent
+ * activity) and the side panel on the right (start panel, exercise, lesson plan,
+ * player). WebMcpBridge, Onboarding and GameOverModal render nothing until needed.
+ */
 import { Board } from "@/components/Board";
 import { EvalBar } from "@/components/EvalBar";
 import { Header } from "@/components/Header";

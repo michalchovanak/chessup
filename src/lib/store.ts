@@ -1,4 +1,16 @@
 "use client";
+/**
+ * The single source of truth for the app.
+ *
+ * A tiny external store (no Redux): components read it with useSyncExternalStore via
+ * useApp(), and the WebMCP tools call its methods directly. It owns the game (moves,
+ * FEN, opponent settings, built-in bot), annotations drawn by the coach, puzzles and
+ * drills, the lesson plan, the player profile (XP, badges, mistakes) and the queue of
+ * events that the agent reads on its next visit.
+ *
+ * Persistence: the profile, lesson, notes and the current game/drill are saved to
+ * localStorage (key "chessup:v1") a moment after every change.
+ */
 import { Chess, type Move, type Square } from "chess.js";
 import { engine, formatScore } from "./engine";
 import {
@@ -34,6 +46,20 @@ import type {
 } from "./types";
 
 const STORAGE_KEY = "chessup:v1";
+
+/** Human-readable names for mistake categories (used in the seeded plan). */
+const MISTAKE_LABEL: Record<string, string> = {
+  hanging_piece: "Hanging pieces",
+  missed_mate: "Missed mates",
+  allowed_mate: "Allowed mates",
+  missed_capture: "Missed captures",
+  opening: "Opening play",
+  endgame: "Endgame technique",
+  tactics: "Tactics",
+  positional: "Positional play",
+  king_safety: "King safety",
+  other: "Mixed mistakes",
+};
 const MAX_MISTAKES = 60;
 const MAX_NOTES = 40;
 const MAX_TOOL_LOG = 80;
@@ -177,6 +203,7 @@ class Store {
       patch.lesson = { title: "Lesson plan", steps: [] };
     }
     this.set({ ...patch, profile, hydrated: true });
+    if (this.state.lesson.steps.length === 0) this.seedLessonPlan();
     this.maybeScheduleBot();
     engine.onStatus((st) => this.set({ engineStatus: st }));
     setTimeout(() => {
@@ -318,6 +345,12 @@ class Store {
     return turn === playerColor;
   }
 
+  /**
+   * Plays a move for the side to move. `by` records who played it (the human, the agent,
+   * the bot or a scripted puzzle reply). Human moves are additionally analysed: cheap
+   * heuristics run immediately, Stockfish follows asynchronously, and puzzle progress is
+   * checked. Illegal moves return an error with the list of legal moves.
+   */
   makeMove(input: MoveInput, by: MoveRecord["by"]): { ok: true; move: Move; record: MoveRecord } | { ok: false; error: string } {
     const before = new Chess(this.state.fen);
     let move: Move | null = null;
@@ -416,8 +449,14 @@ class Store {
     else if (outcome === "drawn") this.addXp(15, "Drew a game");
     else this.addXp(5, "Finished a game");
     this.pushEvent("game_over", `Game over: ${status.result} by ${status.reason}. Player ${outcome}.`, { result: status.result, reason: status.reason, outcome });
+    this.completeSeededStep("play");
   }
 
+  /**
+   * Decides whether the app itself has to move next: the scripted opponent reply inside a
+   * puzzle, or the built-in bot when it is its turn. Runs after every state change that
+   * can hand the move over.
+   */
   private maybeScheduleBot() {
     if (this.botTimer) {
       clearTimeout(this.botTimer);
@@ -658,6 +697,7 @@ class Store {
     profile.drills = [{ at: Date.now(), title: d.title, solved, total, themes }, ...profile.drills].slice(0, 5);
     this.set({ drill: { ...d, status: "done" }, profile });
     if (solved > 0) this.addXp(10 * solved, `Drill "${d.title}": ${solved}/${total} solved`);
+    this.completeSeededStep("drill");
     this.pushEvent("drill_completed", `Drill "${d.title}" finished: ${solved}/${total} solved.`, {
       results: d.results.map((r) => ({ title: r.title, theme: r.theme, status: r.status, attempts: r.attempts })),
     });
@@ -667,6 +707,12 @@ class Store {
     this.set({ drill: null });
   }
 
+  /**
+   * Compares the human's move with the puzzle solution. A matching move advances the
+   * line (the app then plays the scripted reply); any other move fails the puzzle unless
+   * it happens to be checkmate. Solving the last move marks the puzzle solved and, in a
+   * drill, moves on to the next puzzle.
+   */
   private checkPuzzleProgress(playerMove: Move | null) {
     const p = this.state.puzzle;
     if (!p || p.status !== "active" || !p.solution.length) return;
@@ -726,6 +772,7 @@ class Store {
 
   setArrows(arrows: ArrowAnno[], append: boolean) {
     this.set({ arrows: append ? [...this.state.arrows, ...arrows] : arrows });
+    if (arrows.length) this.completeSeededStep("review");
   }
 
   clearAnnotations() {
@@ -737,6 +784,7 @@ class Store {
   addNote(kind: NoteKind, text: string): CoachNote {
     const note: CoachNote = { id: uid(), at: Date.now(), kind, text };
     this.set({ notes: [note, ...this.state.notes].slice(0, MAX_NOTES) });
+    this.completeSeededStep("review");
     return note;
   }
 
@@ -746,6 +794,34 @@ class Store {
 
   clearLesson() {
     this.set({ lesson: { title: "Lesson plan", steps: [] } });
+  }
+
+  /**
+   * Seeds a simple plan from the profile so the player sees a goal from the first move,
+   * before any agent has spoken. The agent can replace it with set_lesson_plan.
+   */
+  seedLessonPlan() {
+    const counts = new Map<string, number>();
+    for (const m of this.state.profile.mistakes) counts.set(m.category, (counts.get(m.category) ?? 0) + 1);
+    const weakest = [...counts.entries()].sort((a, b) => b[1] - a[1])[0]?.[0];
+    const focus = weakest ? MISTAKE_LABEL[weakest] ?? weakest : null;
+    const steps: LessonStep[] = [
+      { key: "play", title: "Play a game against the bot", description: focus ? `Watch out for ${focus.toLowerCase()}; the board records every slip.` : "The board records your moves and spots simple mistakes.", status: "active" },
+      { key: "review", title: "Ask your coach for a review", description: "In the chat: \"Turn my mistakes into a lesson.\"", status: "todo" },
+      { key: "drill", title: focus ? `Drill: ${focus.toLowerCase()}` : "Drill your weakest pattern", description: "Your coach builds 3 puzzles, starting from your own position.", status: "todo" },
+    ];
+    this.set({ lesson: { title: focus ? `Today's focus: ${focus.toLowerCase()}` : "Today: play, review, drill", steps } });
+  }
+
+  /** Ticks off a page-seeded step and activates the next one. No-op for agent-written plans without keys. */
+  private completeSeededStep(key: NonNullable<LessonStep["key"]>) {
+    const steps = this.state.lesson.steps;
+    const i = steps.findIndex((st) => st.key === key);
+    if (i < 0 || steps[i].status === "done") return;
+    const next = steps.map((st, j) => (j === i ? { ...st, status: "done" as const } : st));
+    const nextTodo = next.findIndex((st) => st.status === "todo");
+    if (nextTodo >= 0) next[nextTodo] = { ...next[nextTodo], status: "active" };
+    this.set({ lesson: { ...this.state.lesson, steps: next } });
   }
 
   setLesson(title: string | undefined, steps: LessonStep[]) {

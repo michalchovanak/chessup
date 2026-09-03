@@ -1,4 +1,5 @@
 "use client";
+/** The latest one-sentence note from the coach, shown right under the board. */
 import { useApp } from "@/lib/useApp";
 import type { NoteKind } from "@/lib/types";
 

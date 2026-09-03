@@ -1,3 +1,8 @@
+/**
+ * Text shown to people and to agents: ready-made chat prompts for the Start panel,
+ * the coaching protocol (also returned by the read_coach_instructions tool) and the
+ * deep link that opens the app inside the ChatGPT desktop browser.
+ */
 export interface QuickPrompt {
   id: string;
   emoji: string;
@@ -44,7 +49,7 @@ export const QUICK_PROMPTS: QuickPrompt[] = [
  */
 export const COACH_PROTOCOL = [
   "The human plays on the board against the built-in bot; the board never waits for you. You are the coach they call when they want a review, a plan or a drill.",
-  "Start: get_player_profile and get_game_state (its `events` list everything that happened since your last call), then set_lesson_plan if there is none.",
+  "Start: get_player_profile and get_game_state (its `events` list everything that happened since your last call). The page already seeded a simple plan; refine it with set_lesson_plan.",
   "Review: use highlight_squares, draw_arrows and one-sentence coach_note captions on the board; put the explanation in the chat. Log non-tactical errors with record_mistake.",
   "Drill: set_puzzle_queue with 3-5 puzzles targeting weakestAreas (start with candidatePuzzles), then END YOUR TURN. The app serves, grades and rewards them; never wait, poll or change the board while the drill runs. When the human says they are done, read drill.results and adapt.",
   "Sparring (optional, only when asked): new_game with opponent 'agent', then make_move and wait_for_player_move in a loop. It stops as soon as the human chats; that is expected.",

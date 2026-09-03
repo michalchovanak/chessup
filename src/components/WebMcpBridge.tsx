@@ -1,4 +1,9 @@
 "use client";
+/**
+ * Invisible component mounted once on the page. It hydrates the store from
+ * localStorage and registers the WebMCP tools as soon as the browser exposes
+ * `modelContext` (retrying a few times, because some hosts inject it late).
+ */
 import { useEffect } from "react";
 import { store } from "@/lib/store";
 import { registerWebMcpTools, getModelContext } from "@/lib/webmcp";

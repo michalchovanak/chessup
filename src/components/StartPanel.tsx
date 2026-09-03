@@ -1,4 +1,9 @@
 "use client";
+/**
+ * Side-panel entry point. Without an agent it explains how to open the board in ChatGPT;
+ * with an agent it offers one-click prompts to copy into the chat, and collapses to a
+ * single line once the coach has made its first tool call.
+ */
 import { useState } from "react";
 import { Panel } from "./Panel";
 import { useApp } from "@/lib/useApp";

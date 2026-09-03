@@ -1,4 +1,9 @@
 "use client";
+/**
+ * Status card shown in sparring mode while it is the coach's move. Counts the seconds
+ * since the last move and, if the agent stays quiet, explains that agents only act when
+ * spoken to and offers a nudge to copy.
+ */
 import { useEffect, useState } from "react";
 import { useApp } from "@/lib/useApp";
 

@@ -1,3 +1,11 @@
+/**
+ * Shared data types for the whole app.
+ *
+ * Everything the board, the panels and the WebMCP tools exchange is described here:
+ * annotations drawn on the board, the lesson plan, badges and XP, recorded mistakes,
+ * puzzles and drills, the persistent player profile and the top-level AppState that
+ * the store keeps in memory (and partially in localStorage).
+ */
 export type Color = "w" | "b";
 export type AnnoColor = "green" | "red" | "yellow" | "blue" | "orange";
 
@@ -18,6 +26,8 @@ export interface LessonStep {
   title: string;
   description?: string;
   status: LessonStatus;
+  /** Set on steps the page seeds itself so it can tick them off automatically ("play", "review", "drill"). */
+  key?: "play" | "review" | "drill";
 }
 
 export interface Badge {

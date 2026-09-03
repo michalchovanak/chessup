@@ -1,4 +1,8 @@
 "use client";
+/**
+ * Top bar: app name, the WebMCP status pill (how many tools are live right now) and the
+ * button that reopens the onboarding guide.
+ */
 import { useApp } from "@/lib/useApp";
 import { openOnboarding } from "./Onboarding";
 

@@ -1,4 +1,13 @@
 "use client";
+/**
+ * Registration of the tools with the browser's WebMCP API.
+ *
+ * Finds `document.modelContext` (current spec) or `navigator.modelContext` (early
+ * Chrome builds), wraps each tool so its result is returned as WebMCP content, and keeps
+ * the registered set in sync with the app state: every tool group has its own
+ * AbortController, so a group is unregistered by aborting it and registered again when
+ * it becomes relevant.
+ */
 import { runTool, tools, toolGroup, type ToolGroup } from "./tools";
 import { store } from "./store";
 

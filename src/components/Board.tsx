@@ -1,4 +1,9 @@
 "use client";
+/**
+ * The chessboard the human plays on (react-chessboard) plus everything drawn on it:
+ * last-move tint, check marker, the coach's highlights and arrows, and the selection
+ * dots for click-to-move. Moves are sent to the store, which validates them.
+ */
 import { useMemo, useRef, useState, type CSSProperties } from "react";
 import { Chessboard } from "react-chessboard";
 import { Chess, type Square } from "chess.js";
@@ -70,6 +75,10 @@ export function Board() {
 
   const lastClick = useRef<{ sq: string; at: number }>({ sq: "", at: 0 });
 
+  /**
+   * Click-to-move: the first click selects one of your pieces, the second click on a legal
+   * target plays the move. Dragging is handled by react-chessboard through onPieceDrop.
+   */
   function onSquareClick({ square, piece }: { square: string; piece: { pieceType: string } | null }) {
     if (!canInteract) return;
     const sq = square as Square;

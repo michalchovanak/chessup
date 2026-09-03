@@ -1,4 +1,16 @@
 "use client";
+/**
+ * The WebMCP tools: what a browser agent (ChatGPT, Chrome) can do with the board.
+ *
+ * Each entry in `tools` has a name, a short description written for the agent, a JSON
+ * Schema for its input and an `execute` function that talks to the store. Read-only
+ * tools carry `readOnlyHint`. Outputs are kept small (under ~1.5K characters) and every
+ * state-returning tool includes a `next` hint telling the agent what to do now.
+ *
+ * Tools are grouped (see TOOL_GROUPS): board-changing tools are withdrawn while a drill
+ * is running and the sparring tool only exists when the human picked the coach as a
+ * live opponent. webmcp.ts registers them with the browser.
+ */
 import { Chess, type Square } from "chess.js";
 import { store, isSquare, levelFor, xpForLevel } from "./store";
 import { validateFen } from "./chessLogic";
@@ -53,6 +65,11 @@ function drillGuard(input: Record<string, unknown>): { ok: false; error: string;
   return { ok: false, error: DRILL_GUARD_HINT, drill: { title: d.title, progress: `${d.results.length}/${d.puzzles.length}` } };
 }
 
+/**
+ * Builds the compact game-state payload returned by several tools. It drains the event
+ * queue, so each call also reports what happened since the previous one, and it always
+ * includes a `next` sentence telling the agent what to do now.
+ */
 function summariseState(nextOverride?: string) {
   const st = store.getState();
   const chess = new Chess(st.fen);
@@ -146,6 +163,7 @@ export const tools: ToolDef[] = [
       role: "You are a patient chess coach. The human plays on the board (against the built-in bot); you observe, explain, adapt and reward. The board never waits for you.",
       howItWorks: [
         "You only run when the human talks to you. Each time, call get_game_state: `events` lists what happened since your last call.",
+        "The page seeds a default lesson plan (play, review, drill) so the human has a goal before you speak; refine it with set_lesson_plan.",
         "Explain in the chat; on the board use highlight_squares, draw_arrows and one-sentence coach_note captions.",
         "Personalise from get_player_profile (weakestAreas, recent mistakes, drills).",
       ],
@@ -564,7 +582,7 @@ export const tools: ToolDef[] = [
     name: "set_lesson_plan",
     title: "Set lesson plan",
     description:
-      "Replace the lesson plan in the side panel: a title and 3-6 steps with status todo/active/done/skipped. Build it from get_player_profile at session start and keep it current with update_lesson_step.",
+      "Replace the lesson plan in the side panel: a title and 3-6 steps with status todo/active/done/skipped. The page seeds a simple plan (play, review, drill) from the profile; replace it with a better one once you know the student, and keep it current with update_lesson_step.",
     inputSchema: {
       type: "object",
       properties: {

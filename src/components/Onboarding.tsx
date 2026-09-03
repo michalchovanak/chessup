@@ -1,4 +1,9 @@
 "use client";
+/**
+ * Welcome dialog shown on the first visit (and from the "?" button in the header).
+ * Its open/closed state lives in a small module-level store so any component can open
+ * it without prop drilling.
+ */
 import { useSyncExternalStore } from "react";
 import { chatgptDeeplink } from "@/lib/prompts";
 

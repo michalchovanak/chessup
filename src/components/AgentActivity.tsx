@@ -1,4 +1,8 @@
 "use client";
+/**
+ * Collapsible log of every WebMCP tool call the agent made (input, output, timing).
+ * Mostly for transparency and debugging; hidden by default.
+ */
 import { useState } from "react";
 import { Panel } from "./Panel";
 import { useApp } from "@/lib/useApp";

@@ -1,4 +1,8 @@
 "use client";
+/**
+ * Dialog shown when a normal game ends (not for puzzles): result, XP earned, mistakes
+ * made in this game and buttons to start the next one.
+ */
 import { useMemo, useState } from "react";
 import { Chess } from "chess.js";
 import { store } from "@/lib/store";

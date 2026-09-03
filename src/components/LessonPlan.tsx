@@ -1,4 +1,9 @@
 "use client";
+/**
+ * The lesson plan in the side panel. The page seeds a simple plan (play, review, drill)
+ * and ticks the steps off itself; the coach can replace or update it through the
+ * set_lesson_plan / update_lesson_step tools.
+ */
 import { Panel } from "./Panel";
 import { useApp } from "@/lib/useApp";
 import { store } from "@/lib/store";

@@ -1,4 +1,15 @@
 "use client";
+/**
+ * Stockfish in the browser.
+ *
+ * Loads the single-threaded "lite" Stockfish 18 WebAssembly build from /public/engine
+ * into a Web Worker and talks to it with the UCI protocol. Requests are queued so only
+ * one search runs at a time. Results come back as SAN lines with scores from the side
+ * to move (and from White's point of view for the evaluation bar).
+ *
+ * Used for: the evaluation bar, scoring every human move in centipawn loss, verifying
+ * agent-written puzzles, and the `analyze_position` WebMCP tool.
+ */
 import { Chess } from "chess.js";
 
 /** Stockfish 18 (lite, single-threaded WASM) driven over UCI in a Web Worker. */

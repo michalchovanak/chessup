@@ -1,4 +1,8 @@
 "use client";
+/**
+ * The row under the board: whose move it is, the coach's one-line caption, the
+ * sparring indicator, and the game menu (new game, undo, opponent and bot level).
+ */
 import { useMemo, useState } from "react";
 import type { Opponent } from "@/lib/types";
 import { Chess } from "chess.js";

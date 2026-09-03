@@ -1,3 +1,4 @@
+/** Shared card layout used by every side-panel section. */
 import type { ReactNode } from "react";
 
 export function Panel({ title, badge, children, action, className = "" }: { title: string; badge?: ReactNode; action?: ReactNode; children: ReactNode; className?: string }) {

@@ -1,4 +1,9 @@
 "use client";
+/**
+ * The current exercise: a single puzzle set by the coach, or the progress of a drill
+ * (a queue of puzzles served one by one). Shows goal, hint, progress and the retry /
+ * skip actions; a summary card appears when a drill is complete.
+ */
 import { useState } from "react";
 import { Panel } from "./Panel";
 import { store } from "@/lib/store";

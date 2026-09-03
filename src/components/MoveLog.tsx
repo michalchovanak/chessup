@@ -1,4 +1,5 @@
 "use client";
+/** Collapsible move history under the board, numbered like a PGN. */
 import { useEffect, useRef } from "react";
 import { useApp } from "@/lib/useApp";
 

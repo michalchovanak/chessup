@@ -1,4 +1,9 @@
 "use client";
+/**
+ * Player card: level and XP, badges awarded by the coach, and the "weak spots" summary
+ * built from recorded mistakes. Renaming uses a declarative WebMCP form (toolname
+ * attributes) so agents can call it too.
+ */
 import { useState } from "react";
 import { store, levelFor, xpForLevel } from "@/lib/store";
 import { useApp } from "@/lib/useApp";

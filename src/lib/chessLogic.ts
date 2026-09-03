@@ -1,3 +1,14 @@
+/**
+ * Pure chess helpers built on chess.js. No React, no state.
+ *
+ * - material values and cheap tactical heuristics (hanging piece, missed/allowed mate
+ *   in one, missed winning capture) used to flag a human move right after it is played,
+ * - the built-in bot (three levels, from random to a shallow material search),
+ * - game status, FEN validation and small utilities.
+ *
+ * Stockfish (see engine.ts) gives the precise numbers; these heuristics are instant and
+ * produce the human-readable explanations shown in the profile.
+ */
 import { Chess, validateFen as cjsValidateFen, type Move, type Square, type PieceSymbol } from "chess.js";
 import type { Color, Severity } from "./types";
 
@@ -65,6 +76,11 @@ export interface AutoMistake {
 /**
  * Cheap, engine-free analysis of a move the human just played.
  * `before` is the position prior to the move, `after` the position after it.
+ */
+/*
+ * The checks below are deliberately simple one-ply tactics: they run synchronously right
+ * after the move, need no engine, and produce sentences a beginner understands. Anything
+ * deeper (positional errors, multi-move tactics) is left to Stockfish and to the coach.
  */
 export function analyseHumanMove(before: Chess, after: Chess, played: Move): AutoMistake[] {
   const out: AutoMistake[] = [];
@@ -161,6 +177,11 @@ export function materialBalance(chess: Chess): number {
 }
 
 /** Simple built-in opponent so the app is playable without an agent. */
+/*
+ * Level 1 mostly plays random moves, level 2 picks the best immediate material outcome
+ * while avoiding hanging pieces and mate in one, level 3 adds small bonuses for the
+ * centre, development and checks. It is meant to be a sparring partner, not an engine.
+ */
 export function pickBotMove(chess: Chess, level: 1 | 2 | 3): Move | null {
   const moves = chess.moves({ verbose: true });
   if (moves.length === 0) return null;

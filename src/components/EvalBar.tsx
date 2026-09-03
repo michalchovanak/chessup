@@ -1,4 +1,10 @@
 "use client";
+/**
+ * Vertical evaluation bar next to the board, fed by the built-in Stockfish, with a
+ * popover that explains the number, judges the human's last move and offers a
+ * ready-made question for the coach. Hidden while a puzzle is being solved so it can
+ * never give the answer away.
+ */
 import { useState } from "react";
 import { useApp } from "@/lib/useApp";
 import { formatScore } from "@/lib/engine";
