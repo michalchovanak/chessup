@@ -1,115 +1,74 @@
 # ♞ ChessUp
 
-**Your worst move becomes your next lesson.**
+**A learning tool should let the learner's agent see what they just did, and hand it back exercises it can trust.**
 
-ChessUp is a local-first chess board that an agent can coach through WebMCP. You play every move. The agent reads the exact game state, explains mistakes directly on the board, and turns your own positions into interactive practice.
+ChessUp is a chess board with no AI inside. Through WebMCP it exposes the game, the learner's mistakes and a way to run exercises to the agent already in the browser (ChatGPT's in-app browser, or Chrome with WebMCP enabled). The learner plays every move. The agent explains the mistake on the board and turns it into a drill. The page validates, grades and remembers.
 
-[Live demo](https://chessup-gamma.vercel.app/) · [Open in ChatGPT](https://chatgpt.com/codex/deeplink?url=https%3A%2F%2Fchessup-gamma.vercel.app%2F&openaicom_referred=true) · [Source](https://github.com/michalchovanak/chessup) · [Submission copy](docs/DEVPOST.md)
+[Live app](https://chessup-gamma.vercel.app/) · [Open in ChatGPT](https://chatgpt.com/codex/deeplink?url=https%3A%2F%2Fchessup-gamma.vercel.app%2F&openaicom_referred=true) · [Submission notes](docs/DEVPOST.md) · Built for the [OpenAI WebMCP Challenge](https://openai.com/webmcp-challenge/)
 
-Built for the [OpenAI WebMCP Challenge](https://openai.com/webmcp-challenge/).
+## The idea: five small changes to any learning platform
 
-## The moment
+Most learning apps give everyone the same exercises. A good tutor watches one person, spots the pattern behind their mistakes and builds the next exercise from it. Learners now have such a tutor in their browser, but it sees pixels, not their learning.
 
-1. You make a mistake in a real game.
-2. The agent reads the position and recent events through WebMCP.
-3. It marks the mistake with an arrow, highlights the better move, and explains it.
-4. It creates a short drill on the same pattern, starting with your own position.
-5. The page validates, serves, and grades the puzzles; the agent adapts after seeing the results.
+WebMCP lets a page hand the agent structured capabilities. ChessUp shows that a learning tool needs only a handful of them:
 
-This is the core of ChessUp: **mistake → explanation → deliberate practice → progress**.
+1. **Expose the learner's state and what happened since the agent last looked** (position, moves, mistakes, results). `get_game_state` returns an event queue instead of asking the agent to diff histories.
+2. **Accept exercises from the agent, but verify and run them yourself.** `set_puzzle_queue` checks every puzzle for legality and with Stockfish, then serves, grades and rewards it without the agent in the loop.
+3. **Let the agent teach inside the learner's workspace.** Arrows, highlights and one-sentence captions land on the board the learner is looking at.
+4. **Keep a profile the agent can read and add to.** Weak spots, verified candidate puzzles from the learner's own games, lesson plan, XP and badges, all local to the browser.
+5. **Never wait for the agent.** Agents act only when spoken to, so the built-in bot plays instantly and the page records everything for the next conversation.
 
-## Why WebMCP
+The split is the point: the page owns rules, validation, grading and memory; the agent owns judgement, explanation and personalisation; the learner owns every decision. The same pattern applies to grammar drills, maths steps, music practice or coding exercises. ChessUp is one concrete, working instance, not evidence of learning outcomes; that would need a study.
 
-On an ordinary chess site, a browser agent would have to infer the position from pixels or reverse-engineer the DOM. It could talk about chess, but it could not reliably share control of the live board.
+## Try it
 
-ChessUp exposes the board as structured capabilities instead:
+1. Open the [live app in ChatGPT](https://chatgpt.com/codex/deeplink?url=https%3A%2F%2Fchessup-gamma.vercel.app%2F&openaicom_referred=true) (desktop app with site tools) or in Chrome with `chrome://flags/#enable-webmcp-testing`. The header shows **WebMCP live** with the number of registered tools.
+2. Play a few moves against the built-in bot. Make a mistake; the board records it.
+3. Say, in any language:
 
-- **Exact context:** FEN, move history, legal moves, game status, mistakes, lesson progress, and events since the agent's last visit.
-- **Visible teaching:** arrows, highlights, and one-sentence coaching notes appear on the same board the person is using.
-- **Safe delegation:** agent-created puzzle lines are checked for legality and verified by the built-in Stockfish (the student's moves must be the engine's best) before the student sees them.
-- **Ground truth in the page:** Stockfish 18 (lite, WebAssembly) runs in a Web Worker. It scores every human move in centipawn loss, records engine-only mistakes, feeds the evaluation bar, and answers `analyze_position` so the agent can verify a line before teaching it.
-- **Continuity:** a local player profile keeps mistakes, puzzle results, XP, badges, and weak areas across sessions.
-- **Pull-aware design:** the built-in bot responds instantly and the page records events, so the game never waits for the agent to wake up.
+   > Turn my mistakes into a lesson.
 
-The person supplies intent and plays the moves. The agent supplies judgement and adaptation. The page owns deterministic rules, validation, and grading.
+The agent reads the game and your profile, marks the mistake with an arrow, builds a drill starting from your own position, and adapts the plan when you tell it you are done. Without an agent the board still works: play the bot at three levels, watch the evaluation bar, keep your profile.
 
-## Try the winning flow
+## The tools
 
-1. Open the [live app in ChatGPT](https://chatgpt.com/codex/deeplink?url=https%3A%2F%2Fchessup-gamma.vercel.app%2F&openaicom_referred=true).
-2. Confirm that the header says **WebMCP live**.
-3. Play a few moves against the built-in bot.
-4. Ask:
+Twenty tools, defined in [`src/lib/tools.ts`](src/lib/tools.ts) and registered in [`src/lib/webmcp.ts`](src/lib/webmcp.ts).
 
-   > Turn my mistakes into a lesson: show the biggest one on the board with an arrow and the better move, then set up a drill of 3 puzzles on that type of mistake, starting with my own position.
+| Group | Tools |
+| --- | --- |
+| Orient | `read_coach_instructions` |
+| Observe | `get_game_state`, `get_legal_moves`, `get_player_profile`, `analyze_position` (Stockfish) |
+| Teach | `highlight_squares`, `draw_arrows`, `clear_annotations`, `coach_note` |
+| Practise | `set_puzzle_queue`, `set_position` |
+| Plan and reward | `set_lesson_plan`, `update_lesson_step`, `record_mistake`, `add_xp`, `award_badge` |
+| Play | `new_game`, `make_move`, `undo_move`, `wait_for_player_move` (live sparring) |
 
-The board also works without an agent. In solo mode you can play the built-in bot at three levels or use both sides for analysis.
+Details that matter for a learning tool:
 
-## What people and agents do together
+- **Tool sets follow context.** Board-changing tools are unregistered while a drill runs; the sparring tool exists only when the learner asked the coach to play. Each group has its own `AbortController`.
+- **Agent content is verified before the learner sees it.** Illegal lines return the legal moves; legal but wrong solutions are rejected by Stockfish with the reason.
+- **Small, guided outputs.** Every state-returning tool includes a `next` sentence; read-only tools carry `readOnlyHint`; the profile carries `untrustedContentHint`.
+- **Both halves of the proposal.** Imperative registration for the coaching tools, and a declarative HTML form (`toolname`, `tooldescription`) for renaming the player.
 
-| Person | Agent | ChessUp page |
-| --- | --- | --- |
-| Plays and decides when help is useful | Reads the exact position and identifies the teaching moment | Records the game and exposes structured state |
-| Reviews arrows and explanations | Annotates the board and proposes a better move | Renders those annotations in context |
-| Solves the exercises | Builds a drill for the player's weakest pattern | Validates, serves, and grades every puzzle |
-| Chooses what to work on next | Adapts the lesson from results | Persists progress locally |
+## How it is built
 
-## WebMCP capabilities
+Next.js 16, React 19, TypeScript, Tailwind 4, chess.js, react-chessboard. Stockfish 18 lite (single-threaded WebAssembly, loaded lazily in a Web Worker) scores every move, verifies puzzles and feeds the evaluation bar. No backend, no account, no API key; the profile lives in `localStorage`.
 
-ChessUp registers 20 tools from [`src/lib/tools.ts`](src/lib/tools.ts):
-
-- **Orient:** `read_coach_instructions`
-- **Observe:** `get_game_state`, `get_legal_moves`, `get_player_profile`, `analyze_position` (Stockfish)
-- **Play:** `new_game`, `make_move`, `undo_move`, `wait_for_player_move`
-- **Teach:** `highlight_squares`, `draw_arrows`, `clear_annotations`, `coach_note`
-- **Practise:** `set_position`, `set_puzzle_queue`
-- **Plan and reward:** `set_lesson_plan`, `update_lesson_step`, `record_mistake`, `add_xp`, `award_badge`
-
-Read operations carry `readOnlyHint`. Tool inputs are constrained by JSON Schema, illegal moves return legal alternatives, and invalid puzzle solutions are rejected before they reach the board.
-
-**Dynamic tool sets.** Tools are registered in groups, each with its own `AbortController`, and the set follows the app state: board-changing tools (`new_game`, `set_position`, `set_puzzle_queue`, `make_move`) are unregistered while a drill is active, and `wait_for_player_move` exists only when the human chose the coach as a live opponent. The header shows how many tools are live right now.
-
-**Declarative API too.** Renaming the player is a plain HTML form with `toolname`, `tooldescription` and `toolparamdescription` attributes, the declarative half of the WebMCP proposal, handled by the same `submit` handler a person uses.
-
-## Implementation
-
-- Tools are registered at the top-level page through the imperative `modelContext.registerTool()` API, supporting both `document.modelContext` and `navigator.modelContext` hosts.
-- A small external store coordinates React, the chess rules, local persistence, puzzle execution, and WebMCP calls.
-- `chess.js` handles legal move validation. Lightweight heuristics detect hanging pieces, missed captures, and mate-in-one patterns; Stockfish 18 lite (single-threaded WASM, ~7 MB, loaded lazily from `public/engine/`) adds centipawn loss per move, engine-verified puzzles and the evaluation bar. No special headers are needed.
-- The event queue tells the agent what happened since its previous call instead of asking it to diff game histories.
-- Everything runs in the browser. There is no backend, API key, account, or model bundled into the app.
-
-## Stack
-
-Next.js 16 · React 19 · TypeScript · Tailwind CSS 4 · chess.js · react-chessboard · Vercel
-
-## Local development
+```text
+src/lib/store.ts        game, drills, profile, events, persistence
+src/lib/tools.ts        the 20 WebMCP tools
+src/lib/webmcp.ts       registration and dynamic tool sets
+src/lib/engine.ts       Stockfish UCI client
+src/lib/chessLogic.ts   bot and instant mistake heuristics
+src/components/         board and panels
+public/engine/          Stockfish build (GPLv3)
+```
 
 ```bash
 npm install
 npm run dev
 ```
 
-Then open `http://localhost:3000`. WebMCP is available in ChatGPT's in-app browser or a compatible browser with WebMCP enabled.
-
-```bash
-npm run lint
-npm run build
-```
-
-## Project map
-
-```text
-src/app/                   page, layout, and global styles
-src/components/            board and visible interaction states
-src/lib/tools.ts           20 WebMCP schemas and handlers
-src/lib/webmcp.ts          browser registration adapter
-src/lib/store.ts           game state, persistence, drills, and events
-src/lib/chessLogic.ts      bot and lightweight mistake detection
-src/lib/engine.ts          Stockfish UCI client (Web Worker)
-public/engine/             Stockfish 18 lite WASM build (GPLv3, see COPYING.txt)
-docs/DEVPOST.md            copy-ready submission answers and demo script
-```
-
 ## License
 
-App code: [MIT](LICENSE). The bundled Stockfish engine in `public/engine/` is GPLv3 (see `public/engine/COPYING.txt`) and is loaded as a separate WebAssembly worker.
+App code: [MIT](LICENSE). The bundled Stockfish engine in `public/engine/` is GPLv3 (see `public/engine/COPYING.txt`) and runs as a separate WebAssembly worker.
