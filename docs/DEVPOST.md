@@ -1,6 +1,6 @@
 # ChessUp — submission copy
 
-Copy-ready answers for the OpenAI WebMCP Challenge. Replace the repository and video placeholders before submitting.
+Copy-ready text for the OpenAI WebMCP Challenge. Add the final video URL before submitting.
 
 ## Project name
 
@@ -12,149 +12,117 @@ Your worst move becomes your next lesson.
 
 ## One-sentence pitch
 
-ChessUp is a chess board that lets your browser agent read your game, explain mistakes directly on the board, and turn your own positions into personalized puzzle drills through WebMCP.
+ChessUp lets your browser agent explain a mistake on the live chess board and turn that exact position into a personalized puzzle drill.
 
 ## Short description
 
-ChessUp turns an ordinary game of chess into a shared coaching workspace for a person and their browser agent. The person plays every move. The agent reads the exact position and mistake history, draws explanations on the live board, and creates targeted exercises. ChessUp validates and grades those exercises locally, then reports the results so the agent can adapt the next lesson.
+Play a normal game against the built-in bot, then ask your browser agent for help. Through WebMCP, the agent reads the exact game state, marks the key mistake on the board, and creates a targeted drill. ChessUp validates every puzzle, grades each move, and remembers the result locally. The player never has to export a game, copy chess notation, or leave the board.
 
 ## Why is this use case a strong fit for WebMCP?
 
-Chess coaching depends on shared, precise, rapidly changing context. A useful coach needs more than a screenshot: it needs the exact position, legal moves, recent events, the player's recurring mistakes, and a reliable way to point at the same squares the student sees.
+Chess coaching depends on precise, changing context: the position, legal moves, recent mistakes, and the player's history. A screenshot cannot provide that reliably.
 
-WebMCP turns the open chess page into that shared workspace. ChessUp exposes structured tools for reading the game, annotating the board, creating validated puzzles, updating a lesson, and tracking progress. The agent provides judgement and personalization; the page provides legality, validation, grading, and persistence.
-
-This is meaningfully better than generic browser automation. The agent does not guess from pixels or click through UI controls. It operates through explicit chess-aware actions and receives structured results that tell it what happened and what should happen next.
+WebMCP turns the open board into a shared workspace. The agent can read structured chess state and teach through chess-aware actions instead of guessing from pixels or clicking UI controls. The agent handles explanation and personalization; ChessUp handles legality, validation, grading, and persistence.
 
 ## How does it create a better user experience?
 
-The player never has to export a PGN, copy a FEN, upload a screenshot, or describe what happened. They simply play on the board and ask for help in natural language.
+The player simply plays and asks for help in natural language. There is no PGN export, FEN copy, screenshot upload, account, or separate analysis tool.
 
-The response appears where it is useful: arrows and highlights on the position, a short coaching note below the board, and an interactive drill in the same interface. The first puzzle can be the player's own mistake from moments earlier. The page checks every move, auto-plays the reply, advances the queue, and records the result without another round trip to the agent.
-
-ChessUp also works without an agent. A built-in bot responds immediately while the page records events for the next coaching conversation. The agent enhances the experience without becoming a dependency for basic play.
+The answer appears where it matters: arrows and highlights on the board, a short coaching note, and a drill that can start from the player's own mistake. ChessUp then runs and grades the drill without waiting for more agent calls. The built-in bot also replies instantly, so normal play never depends on the agent.
 
 ## What can people and agents do together that was difficult or impossible before?
 
-A person can now turn a mistake from a live game into deliberate practice without leaving the board or translating the position between products.
+A player can turn a mistake from a live game into deliberate practice without translating the position between products.
 
-The person contributes the game, their goals, and the final decisions. The agent notices patterns across sessions, explains the important moment, chooses what to practise, and composes a targeted drill. ChessUp safely executes that plan: it validates the chess line, serves the puzzles, grades the human's moves, and stores the results. When the person returns to chat, the agent can see what was solved, update the lesson, and choose the next step.
-
-Before WebMCP, a general browser agent could discuss chess but could not reliably read and modify a stateful third-party board through a stable, domain-specific interface. With ChessUp, the person and agent share one live artifact and can alternate naturally between conversation and direct manipulation.
+The player supplies the game and makes every decision for their side. The agent finds the important pattern, explains it, and designs the next lesson. ChessUp safely executes that plan, records the results, and gives them back to the agent for the next conversation. Both work on one visible, stateful artifact instead of passing notation or screenshots back and forth.
 
 ## How did you implement WebMCP?
 
-ChessUp registers 20 imperative tools from the top-level page through the `modelContext.registerTool()` API, supporting both `document.modelContext` and `navigator.modelContext` hosts. Every tool has a clear description, a constrained JSON input schema, and structured output. Read operations use `readOnlyHint` annotations.
+ChessUp defines 20 imperative tools with constrained JSON schemas and structured results. Nineteen are registered during normal play; the live-sparring tool appears only when the player asks for an agent opponent. Board-changing tools are removed while a drill is active. A declarative form exposes player renaming.
 
-The tool handlers reuse the same local store and chess logic as the human interface. `get_game_state` returns FEN, move history, status, material, active exercises, recent mistakes, and a queue of events since the previous call. Teaching tools draw arrows, highlight squares, and post notes. `set_puzzle_queue` accepts an agent-created drill, validates every FEN and SAN solution with chess.js, then verifies each of the student's moves with the built-in Stockfish (WebAssembly, in a Web Worker) and rejects lines that are illegal or not best. `analyze_position` exposes the same engine to the agent, and every human move is scored in centipawn loss so the profile is grounded in engine truth, not only in what the model believes.
-
-Tools are registered in groups with separate abort signals and the live set follows the app state: board-changing tools disappear while a drill is running, and the sparring tool exists only when the human asked for a live opponent. One capability (renaming the player) uses the declarative form-based API to show both halves of the proposal.
-
-Long-running work is delegated to the page. It serves and grades a drill without polling the agent, while `wait_for_player_move` supports optional live sparring with an `AbortSignal`. All state persists in `localStorage`; no backend or API key is required.
+The handlers use the same browser-side store and chess logic as the UI. `get_game_state` returns the position, history, mistakes, exercises, and new events. Teaching tools add arrows, highlights, and notes. `set_puzzle_queue` validates FEN and SAN with chess.js and checks solution quality with Stockfish 18 Lite in a Web Worker. Everything persists in `localStorage`; there is no backend or API key.
 
 ## Inspiration
 
-Most chess products separate playing, analysis, and training. Their puzzle sets are usually generic, even when the player has just demonstrated exactly what they need to practise.
-
-A human coach works differently: they watch the student, identify a recurring pattern, explain it in the current position, and immediately create a similar exercise. WebMCP made it possible to reproduce that loop with the agent already beside the browser instead of embedding another chatbot or model inside the site.
+Most chess apps separate playing, analysis, and training. A human coach does not: they watch, explain the important mistake, and immediately create a related exercise. WebMCP makes that loop possible with the agent already beside the browser.
 
 ## What it does
 
-- Plays a normal game against a built-in bot or in two-player analysis mode.
-- Records moves and scores each one with Stockfish (centipawn loss) plus tactical heuristics, locally.
-- Gives the agent exact game state and an event queue through WebMCP.
-- Lets the agent explain with board highlights, arrows, and coaching notes.
-- Generates validated puzzle drills based on the player's weakest patterns.
-- Serves, grades, and advances those puzzles locally.
-- Maintains a lesson plan, XP, badges, and a persistent mistake profile.
+- Plays a normal game against an instant built-in bot.
+- Scores moves locally with Stockfish.
+- Gives the agent exact game state and recent events.
+- Shows agent explanations on the board.
+- Builds, validates, serves, and grades personalized drills.
+- Tracks mistakes, lesson progress, XP, and badges locally.
 - Supports optional live agent sparring.
 
 ## How we built it
 
-The app uses Next.js 16, React 19, TypeScript, Tailwind CSS 4, chess.js, and react-chessboard. A small browser-side store is shared by the React interface and all WebMCP handlers. Tools are registered imperatively when the page loads and unregistered through an abort signal when the component unmounts.
-
-The deterministic work stays in the app: move legality, puzzle validation, bot replies, scoring, event recording, and persistence. The agent handles the open-ended work: explanation, prioritization, lesson design, and personalization.
+Next.js 16, React 19, TypeScript, Tailwind CSS 4, chess.js, and react-chessboard power the interface. Stockfish 18 Lite runs locally in a Web Worker. One browser-side store powers both the UI and WebMCP handlers, so agent actions appear immediately on the board.
 
 ## Challenges we ran into
 
-The biggest design challenge was WebMCP's pull-based lifecycle. The page cannot independently wake the agent after every human move. We solved that in two ways: normal games use an instant built-in bot plus an event queue the agent reads later, while optional sparring uses a bounded `wait_for_player_move` tool.
-
-The second challenge was trusting agent-generated chess content. A fluent-looking puzzle can contain an illegal move, or a legal move that simply is not best. ChessUp validates the entire proposed SAN line against its FEN and then asks the built-in Stockfish whether each of the student's moves is the engine's choice; it returns a precise rejection ("engine prefers Qxf7#, Qh4 misses a forced mate") when the line fails.
-
-The third challenge was keeping the experience understandable with 19 capabilities. We grouped the visible UI around one primary action—turn a mistake into a lesson—and placed secondary history, prompts, and progress behind disclosures.
+- **Agents are pull-based.** The built-in bot responds immediately, while an event queue preserves context for the next conversation.
+- **Generated chess lines can be wrong.** ChessUp validates legality with chess.js and checks move quality with Stockfish before starting a drill.
+- **Too many capabilities can feel complex.** The UI centers on one action: turn a mistake into a lesson.
 
 ## Accomplishments we are proud of
 
-- The first drill position can come directly from the player's own game.
-- The agent and the human operate on one visible board instead of exchanging notation manually.
-- Agent-generated puzzle lines are validated for legality and verified by Stockfish before use.
-- The app remains fully playable without an agent, backend, account, or API key.
-- The same store powers the UI and WebMCP tools, so agent actions are immediately visible and auditable.
+- A drill can begin with the player's own position from moments earlier.
+- The agent and player work on one visible board.
+- Agent-created puzzles are verified before use.
+- The app needs no backend, account, or API key.
 
 ## What we learned
 
-The best WebMCP tools do not mirror every button. They expose meaningful domain actions and return enough structured state for the agent to verify the result.
-
-We also learned that human-agent collaboration works best when each side owns different work. The agent should not replace the student's chess move or the app's deterministic validator. It should contribute context-sensitive judgement that neither side can provide alone.
-
-Finally, an agent-aware page needs to be resilient to absence and interruption. Recording events and delegating drills to the browser made the experience faster and more reliable than waiting for an agent after every interaction.
+Good WebMCP tools expose meaningful domain actions, not every button. Human-agent collaboration also works best when responsibilities are clear: the agent judges and explains, the page verifies and executes, and the human decides.
 
 ## What's next
 
-- Spaced repetition for positions generated from the player's own mistakes.
-- Session summaries the coach can read back at the start of the next session.
-- Opening-pattern tracking across games.
-- Import and export of games and training history.
+- Spaced repetition for positions from the player's games.
+- Session summaries and opening-pattern tracking.
+- Import and export for games and training history.
 
-## Demo video script — 2 minutes
+## Two-minute demo
 
-### 0:00–0:12 — Hook
+### 0:00–0:15 — Hook
 
-Show ChessUp open beside the agent with **WebMCP live** visible.
+Show the live board and **WebMCP live** status.
 
-> "Most chess apps tell you that you made a mistake. ChessUp turns that exact mistake into your next lesson."
+> "Most chess apps tell you that you made a mistake. ChessUp turns that mistake into your next lesson."
 
-### 0:12–0:35 — Make a mistake
+### 0:15–0:35 — Play
 
-Play a short prepared sequence against the built-in bot and deliberately leave a piece hanging. Show that the board responds immediately and records the game without waiting for the agent.
+Make a prepared mistake against the built-in bot. Show the instant reply and move history.
 
-### 0:35–1:00 — Review together
+### 0:35–1:05 — Review
 
 Ask:
 
-> "Turn my mistakes into a lesson: show the biggest one on the board with an arrow and the better move, then set up a drill of 3 puzzles on that type of mistake, starting with my own position."
+> "Turn my mistakes into a lesson. Show the biggest one on the board, then create a three-puzzle drill starting from my position."
 
-Show the agent reading the profile and game state. Keep the camera on the board as the arrow, highlight, and coaching note appear.
+Show the arrow, highlight, and coaching note appear on the board.
 
-### 1:00–1:30 — Practise the mistake
+### 1:05–1:35 — Practise
 
-Show the first puzzle using the position from the game. Solve it on the board. Show the automatic opponent reply, grading, and progression to the next puzzle.
+Solve the first puzzle. Show automatic replies, grading, and progress.
 
-> "The agent designed the lesson. The page validates and runs it. I still make every move."
+> "The agent designed the lesson. ChessUp validates and runs it. I still make every move."
 
-### 1:30–1:50 — Adapt
+### 1:35–1:50 — Adapt
 
-Complete or skip to the drill summary, then tell the agent:
-
-> "I'm done. Update my lesson from the results."
-
-Show the lesson status and player progress update.
+Ask the agent to read the results and update the lesson plan.
 
 ### 1:50–2:00 — Close
 
 > "One board. One agent. A lesson built from how I actually play."
 
-End on the live URL and repository URL.
-
 ## Submission checklist
 
-- [x] Project name and tagline
-- [x] Complete written description
-- [x] Answers to the four WebMCP questions
-- [x] Working live app: https://chessup-gamma.vercel.app/
-- [x] Open-source license: MIT
-- [x] Public repository URL: https://github.com/michalchovanak/chessup
-- [ ] Public demo video URL: **ADD BEFORE SUBMITTING**
-- [ ] Final video recorded against the production URL
-- [ ] Production deployment re-tested in ChatGPT's in-app browser
-- [ ] Confirm all submission fields and eligibility requirements on Devpost
+- [x] Written submission copy
+- [x] Live app: https://chessup-gamma.vercel.app/
+- [x] Public repository: https://github.com/michalchovanak/chessup
+- [x] MIT license
+- [ ] Add the public demo video URL
+- [ ] Re-test the production demo in ChatGPT
+- [ ] Confirm the final Devpost fields and eligibility rules

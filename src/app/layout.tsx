@@ -15,7 +15,7 @@ const ibmPlexMono = IBM_Plex_Mono({
 
 export const metadata: Metadata = {
   title: "ChessUp · WebMCP chess coach",
-  description: "A chess board that an AI agent can coach through WebMCP tools: puzzles tailored to your weaknesses, lesson plans, XP and badges.",
+  description: "Play chess, review a mistake with your browser agent, and practise it on the same board.",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
