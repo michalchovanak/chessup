@@ -2,6 +2,7 @@
 import { Chess, type Square } from "chess.js";
 import { store, isSquare, levelFor, xpForLevel } from "./store";
 import { gameStatus, materialBalance, bestCapture, findMateInOne } from "./chessLogic";
+import { COACH_PROTOCOL } from "./prompts";
 import type { AnnoColor, Color, LessonStatus, LessonStep, MistakeCategory, NoteKind, Severity } from "./types";
 
 export interface ToolDef {
@@ -100,7 +101,7 @@ export const tools: ToolDef[] = [
     name: "get_game_state",
     title: "Get game state",
     description:
-      "Read the current chess board. Returns FEN, whose turn it is, which colour the human plays, move history (SAN + PGN), game status, material balance, the active puzzle (if any) and its progress, the human's recent mistakes (auto-detected or recorded by you), and `eventsSinceLastCall`: everything that happened since you last looked (player moves with auto-analysis, puzzle solved/failed, game over, level-ups). Call this first and whenever you need a fresh look. If `yourTurn` is true you are expected to reply with make_move. To react to the human's next move without them typing anything, use wait_for_player_move instead of polling.",
+      "COACH PROTOCOL: (1) Start with get_player_profile + get_game_state, then set_lesson_plan. (2) To play: new_game, make_move, then IMMEDIATELY wait_for_player_move, and loop until the game ends; never stop to ask the human to type. (3) Coach after each human move with coach_note / highlight_squares / draw_arrows. (4) Drill weaknesses with set_position puzzles and reward with add_xp / award_badge. Read the current chess board. Returns FEN, whose turn it is, which colour the human plays, move history (SAN + PGN), game status, material balance, the active puzzle (if any) and its progress, the human's recent mistakes (auto-detected or recorded by you), and `eventsSinceLastCall`: everything that happened since you last looked (player moves with auto-analysis, puzzle solved/failed, game over, level-ups). Call this first and whenever you need a fresh look. If `yourTurn` is true you are expected to reply with make_move. To react to the human's next move without them typing anything, use wait_for_player_move instead of polling.",
     inputSchema: { type: "object", properties: {}, additionalProperties: false },
     annotations: { readOnlyHint: true },
     execute: () => summariseState(),
@@ -149,7 +150,17 @@ export const tools: ToolDef[] = [
     execute: async (input, options) => {
       const secs = Math.min(120, Math.max(5, Math.round(num(input.timeoutSeconds, 60))));
       const moved = await store.waitForPlayerAction(secs * 1000, options?.signal);
-      return { moved, waitedSeconds: moved ? undefined : secs, ...summariseState() };
+      const state = summariseState();
+      const next = !moved
+        ? "Nothing happened yet. Call wait_for_player_move again (optionally after a short coach_note)."
+        : state.gameOver
+          ? "The game is over: summarise it, record_mistake / add_xp / award_badge as appropriate, then offer a new_game or a puzzle."
+          : state.puzzle && state.puzzle.status !== "active"
+            ? `Puzzle ${state.puzzle.status}: react with coach_note (and add_xp / award_badge if solved), then set the next puzzle or wait_for_player_move after a retry.`
+            : state.yourTurn
+              ? "React to the human's move (coach_note / highlight_squares / draw_arrows), then make_move and wait_for_player_move again."
+              : "Comment on the move if useful, then call wait_for_player_move again.";
+      return { moved, waitedSeconds: moved ? undefined : secs, next, ...state };
     },
   },
   {
@@ -225,7 +236,13 @@ export const tools: ToolDef[] = [
       const opp = (["agent", "bot", "human"] as const).find((o) => o === input.opponent) ?? "agent";
       const lvl = ([1, 2, 3] as const).find((l) => l === input.botLevel);
       store.newGame({ playerColor: pc, opponent: opp, ...(lvl ? { botLevel: lvl } : {}) });
-      return { ok: true, ...summariseState() };
+      const state = summariseState();
+      const next = state.yourTurn
+        ? "It is your move: call make_move, then wait_for_player_move."
+        : opp === "agent"
+          ? "Call wait_for_player_move now; the human moves first."
+          : "The human plays now. Call wait_for_player_move to be told when they moved.";
+      return { ok: true, next, ...state };
     },
   },
   {
@@ -260,7 +277,13 @@ export const tools: ToolDef[] = [
         playerColor: pc,
       });
       if (!r.ok) return { ok: false, error: r.error };
-      return { ok: true, ...summariseState(), puzzleId: r.puzzle?.id ?? null, solutionLength: r.puzzle?.solution.length ?? 0 };
+      return {
+        ok: true,
+        next: r.puzzle ? "Call wait_for_player_move now; it returns when the human solves or fails the puzzle." : "Position set. Use highlight_squares / draw_arrows / coach_note to explain it, or wait_for_player_move if the human should play.",
+        ...summariseState(),
+        puzzleId: r.puzzle?.id ?? null,
+        solutionLength: r.puzzle?.solution.length ?? 0,
+      };
     },
   },
   {
@@ -499,7 +522,7 @@ export const tools: ToolDef[] = [
     name: "get_player_profile",
     title: "Get player profile",
     description:
-      "Read the student's persistent profile: XP, level, badges, game and puzzle statistics (including per-theme puzzle results), session count, the current lesson plan, and a breakdown of recorded mistakes by category with the most recent examples. Use it at the start of a session to personalise the lesson plan and to choose puzzle themes that target the weakest areas.",
+      "COACH PROTOCOL: (1) Start with get_player_profile + get_game_state, then set_lesson_plan. (2) To play: new_game, make_move, then IMMEDIATELY wait_for_player_move, and loop until the game ends; never stop to ask the human to type. (3) Coach after each human move with coach_note / highlight_squares / draw_arrows. (4) Drill weaknesses with set_position puzzles and reward with add_xp / award_badge. Read the student's persistent profile: XP, level, badges, game and puzzle statistics (including per-theme puzzle results), session count, the current lesson plan, and a breakdown of recorded mistakes by category with the most recent examples. Use it at the start of a session to personalise the lesson plan and to choose puzzle themes that target the weakest areas.",
     inputSchema: { type: "object", properties: {}, additionalProperties: false },
     annotations: { readOnlyHint: true },
     execute: () => {
@@ -532,6 +555,7 @@ export const tools: ToolDef[] = [
   },
 ];
 
+export const coachProtocol = COACH_PROTOCOL;
 export const toolByName = new Map(tools.map((t) => [t.name, t]));
 
 export async function runTool(name: string, input: Record<string, unknown>, source: "agent" | "debug", signal?: AbortSignal): Promise<unknown> {

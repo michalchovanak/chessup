@@ -12,24 +12,26 @@ Chess sites give everyone the same puzzles. A human coach watches *you*, notices
 - **The agent observes, teaches and adapts.** Through WebMCP it reads the position and the player's mistake history, highlights squares, draws arrows, posts coaching notes, builds a lesson plan, and — the original part — **generates "puzzle rush on demand"**: it composes FEN positions targeting the player's recorded weak spots, hands them to the app with a solution line, and the app validates the human's moves against it.
 - **Gamification is agent-driven.** XP, levels and badges are tools, so the coach decides what deserves a reward. The profile survives reloads and sessions, so the next session starts from what the coach learned last time.
 
-## Try it
+## Getting started (2 minutes)
 
-Live: **https://chessup-gamma.vercel.app**
+**Live app:** https://chessup-gamma.vercel.app
 
-1. Open the URL in **ChatGPT's browser**, or in **Chrome** with `chrome://flags/#enable-webmcp-testing` enabled.
-2. The header shows **"Agent connected"** when `modelContext` is detected and the tools are registered.
-3. Talk to the agent. Some prompts that work well:
+1. **Open it inside an agent browser.**
+   - **ChatGPT app:** open a new browser tab (the `+` next to your tabs), paste the link, and use the chat panel next to it.
+   - **Chrome:** enable `chrome://flags/#enable-webmcp-testing`, restart, open the link, and use an agent that supports WebMCP.
+2. **Check the header pill.** It turns green, **Agent connected**, when the page's 17 tools are registered with the agent.
+3. **Say what you want, in any language.** No special wording is needed. The tools carry a coaching protocol (start from the profile, play with `make_move` + `wait_for_player_move`, coach after every move), and every tool result tells the agent what to do next. Examples:
 
 ```
-Look at my profile and build me a 4-step lesson plan for today.
-Play a game against me as Black and coach me after every move.
-I keep hanging pieces. Give me three puzzles that punish that, one at a time.
-Set up a back-rank mate puzzle for me, White to move.
-Show me with arrows why my last move was bad, then let me take it back.
-Award me a badge if I finish this puzzle without a hint.
+Play a game against me and coach me after each move.
+I keep hanging pieces. Give me puzzles that punish that.
+Read my profile, build a lesson for today and walk me through it.
+Review this game with arrows and tell me one thing to practise.
 ```
 
-No agent? The **Dev tools** panel at the bottom lets you call any tool by hand with JSON input, so every feature can be exercised in a normal browser.
+The **Start** panel on the page has one-click copies of these prompts, and the **?** button in the header reopens the welcome guide.
+
+**No agent?** The board still works: play the built-in bot (three levels), and the **Dev tools** panel at the bottom lets you call any tool by hand with JSON input.
 
 ## The tools
 

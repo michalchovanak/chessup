@@ -1,6 +1,7 @@
 "use client";
 import { levelFor, xpForLevel } from "@/lib/store";
 import { useApp } from "@/lib/useApp";
+import { openOnboarding } from "./Onboarding";
 
 export function Header() {
   const st = useApp();
@@ -33,6 +34,7 @@ export function Header() {
           </div>
         </div>
         <AgentPill connected={st.agentConnected} hydrated={st.hydrated} />
+        <button onClick={openOnboarding} title="How it works" className="h-8 w-8 rounded-full border border-white/10 text-slate-400 hover:text-amber-200 hover:border-amber-400/40 text-sm">?</button>
       </div>
     </header>
   );

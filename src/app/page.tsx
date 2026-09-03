@@ -9,11 +9,15 @@ import { MoveLog } from "@/components/MoveLog";
 import { AgentActivity } from "@/components/AgentActivity";
 import { DebugPanel } from "@/components/DebugPanel";
 import { WebMcpBridge } from "@/components/WebMcpBridge";
+import { StartPanel } from "@/components/StartPanel";
+import { Onboarding } from "@/components/Onboarding";
+import { CoachProtocol } from "@/components/CoachProtocol";
 
 export default function Home() {
   return (
     <main className="min-h-screen">
       <WebMcpBridge />
+      <Onboarding />
       <Header />
       <div className="mx-auto max-w-[1400px] px-5 md:px-8 py-6 grid gap-6 lg:grid-cols-[minmax(0,1fr)_380px] xl:grid-cols-[minmax(0,1fr)_420px]">
         <div className="min-w-0">
@@ -25,11 +29,13 @@ export default function Home() {
             <MoveLog />
             <AgentActivity />
           </div>
-          <div className="mt-4">
+          <div className="mt-4 space-y-4">
             <DebugPanel />
+            <CoachProtocol />
           </div>
         </div>
         <aside className="space-y-4 min-w-0">
+          <StartPanel />
           <CoachPanel />
           <PuzzleCard />
           <LessonPlan />
