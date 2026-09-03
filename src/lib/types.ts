@@ -51,6 +51,10 @@ export interface Mistake {
   fen: string;
   movePlayed?: string;
   betterMove?: string;
+  /** Position after the mistake (for "punish it" puzzles). */
+  fenAfter?: string;
+  /** The opponent's move that punishes the mistake, in SAN. */
+  punishMove?: string;
   source: "auto" | "agent";
 }
 

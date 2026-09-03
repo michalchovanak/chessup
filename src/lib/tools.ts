@@ -60,8 +60,10 @@ function summariseState(nextOverride?: string) {
     nextOverride ??
     (status.over && !p
       ? "Game over: review it (arrows, highlights, one-sentence captions), record_mistake / add_xp / award_badge, then suggest a drill or new_game."
-      : d && d.status === "active"
-        ? "The human is working through the drill on the board. Answer questions; read results here when they return."
+      : d && d.status === "done"
+        ? "Drill finished: comment on `drill.results`, update_lesson_step, award_badge if at least two thirds were solved, then propose the next step."
+        : d && d.status === "active"
+          ? "The human is working through the drill on the board. Answer questions; read results here when they return."
         : opponent === "agent"
           ? yourTurn
             ? "Sparring: coach the last human move briefly, then make_move and wait_for_player_move."
@@ -131,7 +133,7 @@ export const tools: ToolDef[] = [
         "Personalise from get_player_profile (weakestAreas, recent mistakes, drills).",
       ],
       reviewLoop: ["get_game_state", "highlight_squares / draw_arrows", "coach_note (1 sentence)", "record_mistake for non-tactical errors", "add_xp / award_badge for real progress"],
-      drillLoop: ["get_player_profile → pick weak themes", "set_puzzle_queue with 3-5 puzzles (fen, title, goal, hint, theme, solution)", "the app serves, grades and rewards them", "when the human returns: read `drill` in get_game_state, adapt the next drill"],
+      drillLoop: ["get_player_profile → weakestAreas and candidatePuzzles (positions from the human's own games, already validated)", "set_puzzle_queue with 3-5 puzzles: start with candidatePuzzles, add your own on the same theme (fen, title, goal, hint, theme, solution)", "the app serves, grades and rewards them", "when the human returns: read `drill.results` in get_game_state, update_lesson_step, award_badge if at least two thirds were solved, plan the next drill"],
       sparringLoop: ["only when the human asks to play against you", "new_game opponent 'agent'", "make_move", "wait_for_player_move", "repeat; it ends whenever the human chats"],
       rules: ["Never move the human's pieces in a puzzle; hint instead.", "Keep captions to one sentence.", "Reply in the human's language."],
       next: "Call get_player_profile and get_game_state now.",
@@ -622,7 +624,7 @@ export const tools: ToolDef[] = [
     name: "get_player_profile",
     title: "Get player profile",
     description:
-      "Read the persistent profile: XP, level, badges, game and puzzle stats by theme, mistakes by category with recent examples, weakestAreas and the lesson plan. Call it at session start to personalise the plan and pick puzzle themes.",
+      "Read the persistent profile: XP, level, badges, game and puzzle stats by theme, mistakes by category, weakestAreas, recent drills, the lesson plan, and candidatePuzzles: validated puzzles built from the human's own mistakes, ready to pass to set_puzzle_queue. Call it at session start and before every drill.",
     inputSchema: { type: "object", properties: {}, additionalProperties: false },
     annotations: { readOnlyHint: true, untrustedContentHint: true },
     execute: () => {
@@ -650,11 +652,42 @@ export const tools: ToolDef[] = [
         recentMistakes: profile.mistakes.slice(0, 4).map((m) => ({ category: m.category, severity: m.severity, description: m.description, fen: m.fen, movePlayed: m.movePlayed, betterMove: m.betterMove })),
         recentXp: profile.xpLog.slice(0, 3).map((x) => ({ amount: x.amount, reason: x.reason })),
         recentDrills: profile.drills.slice(0, 3).map((d) => ({ title: d.title, solved: d.solved, total: d.total, themes: d.themes })),
+        candidatePuzzles: candidatePuzzles(profile.mistakes),
         lessonPlan: lesson,
       };
     },
   },
 ];
+
+/** Puzzles derived from the human's own auto-detected mistakes, ready for set_puzzle_queue. */
+function candidatePuzzles(mistakes: { category: string; fen: string; fenAfter?: string; betterMove?: string; punishMove?: string; movePlayed?: string; at: number }[]) {
+  const out: { title: string; fen: string; goal: string; theme: string; solution: string[]; from: string }[] = [];
+  const seen = new Set<string>();
+  for (const m of mistakes) {
+    if (out.length >= 5) break;
+    let fen: string | undefined;
+    let solution: string | undefined;
+    let goal = "";
+    if ((m.category === "missed_mate" || m.category === "missed_capture") && m.betterMove) {
+      fen = m.fen;
+      solution = m.betterMove;
+      goal = m.category === "missed_mate" ? "Find the checkmate you missed." : "Find the winning capture you missed.";
+    } else if ((m.category === "hanging_piece" || m.category === "allowed_mate") && m.fenAfter && m.punishMove) {
+      fen = m.fenAfter;
+      solution = m.punishMove;
+      goal = m.category === "allowed_mate" ? "Punish the last move: find the mate." : "Punish the last move: win material.";
+    }
+    if (!fen || !solution) continue;
+    const key = `${fen}|${solution}`;
+    if (seen.has(key)) continue;
+    const v = store.validatePuzzleSpec(fen, [solution]);
+    if (!v.ok) continue;
+    seen.add(key);
+    const when = new Date(m.at).toISOString().slice(0, 10);
+    out.push({ title: `From your game (${when})`, fen, goal, theme: m.category, solution: v.solution, from: `you played ${m.movePlayed ?? "?"}` });
+  }
+  return out;
+}
 
 export const toolByName = new Map(tools.map((t) => [t.name, t]));
 

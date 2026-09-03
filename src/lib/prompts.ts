@@ -9,11 +9,11 @@ export interface QuickPrompt {
 /** Ready-made prompts for the human to paste into the agent chat. Any wording works; these just show what the coach can do. */
 export const QUICK_PROMPTS: QuickPrompt[] = [
   {
-    id: "review",
-    emoji: "🔍",
-    title: "Review my game",
-    blurb: "Arrows, highlights and the one thing to practise.",
-    prompt: "Review the game on the board: show my mistakes with arrows and highlights, record them in my profile and tell me one thing to practise.",
+    id: "lesson-from-mistakes",
+    emoji: "🎓",
+    title: "Turn my mistakes into a lesson",
+    blurb: "Arrows on what went wrong, then a drill built from it.",
+    prompt: "Turn my mistakes into a lesson: show the biggest one on the board with an arrow and the better move, then set up a drill of 3 puzzles on that type of mistake, starting with my own position.",
   },
   {
     id: "drill",

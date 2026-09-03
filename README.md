@@ -26,7 +26,7 @@ Chess sites give everyone the same puzzles. A human coach watches *you*, notices
 3. **Play on the board, and talk to the coach whenever you want it.** Agents only act when you message them, so the page never waits for the coach. No special wording is needed; the tools carry the protocol and every result says what to do next. The tools carry a coaching protocol (start from the profile, play with `make_move` + `wait_for_player_move`, coach after every move), and every tool result tells the agent what to do next. Examples:
 
 ```
-Review my game so far with arrows and tell me one thing to practise.
+Turn my mistakes into a lesson.
 I keep hanging pieces. Set up a drill of 5 puzzles that punish that.
 Read my profile, build a lesson for today and walk me through it.
 Start a sparring game: play against me and coach me after each move.
@@ -60,7 +60,7 @@ All tools are registered from [`src/lib/webmcp.ts`](src/lib/webmcp.ts) via `navi
 | `award_badge` | Give a named, unique badge with an emoji. |
 | `add_xp` | Add (or remove) XP with a reason; returns level and level-up. |
 | `record_mistake` | Log a categorised mistake the app cannot detect itself (opening, king safety, positional…). |
-| `get_player_profile` | XP, level, badges, game/puzzle stats per theme, mistakes by category, weakest areas, lesson plan. |
+| `get_player_profile` | XP, level, badges, game/puzzle stats per theme, mistakes by category, weakest areas, lesson plan, and **`candidatePuzzles`**: validated puzzles built from the human's own mistakes (the position before a missed tactic, or the position after a blunder with the punishing move). |
 
 ### Human ↔ agent collaboration details
 

@@ -299,6 +299,8 @@ class Store {
           fen: fenBefore,
           movePlayed: move.san,
           betterMove: a.betterMove,
+          fenAfter: after.fen(),
+          punishMove: a.punish,
           source: "auto",
         });
       }

@@ -58,6 +58,8 @@ export interface AutoMistake {
   severity: Severity;
   description: string;
   betterMove?: string;
+  /** Opponent's reply that punishes the mistake (SAN). */
+  punish?: string;
 }
 
 /**
@@ -87,6 +89,7 @@ export function analyseHumanMove(before: Chess, after: Chess, played: Move): Aut
         category: "allowed_mate",
         severity: "blunder",
         description: `After ${played.san} the opponent has mate in one with ${oppMate.san}.`,
+        punish: oppMate.san,
       });
     }
   }
@@ -115,6 +118,7 @@ export function analyseHumanMove(before: Chess, after: Chess, played: Move): Aut
         category: "hanging_piece",
         severity: severityFor(threat.net),
         description: `${pieceName(victim?.type)} on ${victimSq} ${verb}: ${threat.move.san} wins about ${threat.net} point(s).`,
+        punish: threat.move.san,
       });
     }
   }

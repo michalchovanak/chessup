@@ -37,14 +37,14 @@ Engine-backed evaluation (Stockfish WASM) exposed as a tool, opening repertoire 
 
 # Demo video script (≤ 3 min)
 
-**0:00–0:20 — Hook.** Screen: ChessUp open in ChatGPT's browser, "Agent connected" pill. Voice: "This is ChessUp. It's a chess board with no AI inside. The coach is the agent in my browser, talking to the page through WebMCP tools."
+**0:00–0:15 — Hook.** ChessUp open in ChatGPT's browser, green "Agent connected" pill. Voice: "A chess board with no AI inside. The coach is the agent already in my browser, talking to the page through WebMCP."
 
-**0:20–0:50 — Profile → plan.** Type: *"Look at my profile and build a lesson plan for today."* Show the agent calling `get_player_profile`, then the Lesson plan panel filling in. Point at the Agent activity log.
+**0:15–0:45 — Play.** A few quick moves against the built-in bot; deliberately hang a knight (e.g. 1.e4 e5 2.Nf3 Nc6 3.Nxe5). Point at Weak spots: the app recorded it on its own.
 
-**0:50–1:30 — Play + review.** Play a few quick moves against the bot, deliberately hang a piece. Type: *"Review my game so far."* Show the agent reading `events`, the red highlight and arrow, the one-line caption under the board, and the mistake landing in the Player panel.
+**0:45–1:15 — Lesson.** Type: *"Turn my mistakes into a lesson."* The agent reads `events` and the profile, draws the arrow on the blunder, shows the better move, posts a one-line caption.
 
-**1:30–2:20 — Drill on demand.** Type: *"Set up a drill of 3 puzzles for my weak spots."* Show `set_puzzle_queue` arriving, the Drill 1/3 card, solve them by dragging, XP going up, the Drill complete card, then *"I'm done"* and the agent reading the results and awarding a badge.
+**1:15–2:15 — Drill.** The agent calls `set_puzzle_queue` once: the first puzzle is your own position from a minute ago (`candidatePuzzles`), two more on the same theme. Solve them by dragging; the page grades, auto-plays replies and advances. Show the Drill complete card.
 
-**2:20–2:50 — Why it matters.** Voice over the tool table in the README: 18 tools, read_coach_instructions, wait_for_player_move, event queue, validation, persistence. "The human plays and decides. The agent observes, teaches and adapts."
+**2:15–2:45 — Adapt.** Type: *"I'm done."* The agent reads `drill.results`, updates the lesson plan step, awards a badge. XP bar moves.
 
-**2:50–3:00 — Close.** URL + GitHub link on screen.
+**2:45–3:00 — Close.** URL + GitHub on screen. Voice: "The human plays every move. The agent observes, teaches and adapts."
