@@ -7,12 +7,12 @@ A chess coach that lives in your browser agent: it watches you play, builds puzz
 Chess sites give everyone the same puzzles. A real coach watches *you*: they notice you keep hanging knights on the rim and set up three positions that punish exactly that. With WebMCP, the agent already in your browser can be that coach — if the web page gives it the right eyes and hands.
 
 ## What it does
-ChessUp is a normal chess board (click or drag) with **no AI of its own**. It registers **16 WebMCP tools** so the browser agent can:
+ChessUp is a normal chess board (click or drag) with **no AI of its own**. It registers **17 WebMCP tools** so the browser agent can:
 
 - **See**: `get_game_state` returns FEN, PGN, status, material, the active puzzle's progress, the player's recent mistakes and an **event queue** of everything the human did since the last call.
 - **Teach**: highlight squares, draw arrows, post coaching notes (tips, praise, warnings, questions), keep a live lesson plan.
 - **Adapt**: `get_player_profile` exposes mistakes by category and per-theme puzzle stats. The agent composes a FEN + solution line and hands it to `set_position`; the app validates the line, auto-plays the opponent's replies and grades the human's moves. That is **"puzzle rush on demand"**, built for one person.
-- **Play**: `make_move` lets the agent be the opponent or demonstrate a line; `undo_move` lets the student retry.
+- **Play**: `make_move` lets the agent be the opponent or demonstrate a line; `undo_move` lets the student retry. `wait_for_player_move` is a long-running call that returns when the human acts, so the agent can run a whole game in a single turn: move, wait, coach, move.
 - **Reward**: `add_xp` and `award_badge` are tools, so gamification is the coach's judgement, not a fixed rule set. The profile persists across sessions.
 
 The human plays and decides; the agent observes, explains and adapts.
@@ -44,6 +44,6 @@ Engine-backed evaluation (Stockfish WASM) exposed as a tool, opening repertoire 
 
 **1:30–2:20 — Puzzle on demand.** Type: *"I keep hanging pieces. Give me a puzzle that punishes that."* Show `set_position` arriving, the Exercise card, solve it by dragging, the "Solved" badge, XP going up, a badge awarded by the agent.
 
-**2:20–2:50 — Why it matters.** Voice over the tool table in the README: 16 tools, event queue, validation, persistence. "The human plays and decides. The agent observes, teaches and adapts."
+**2:20–2:50 — Why it matters.** Voice over the tool table in the README: 17 tools, wait_for_player_move, event queue, validation, persistence. "The human plays and decides. The agent observes, teaches and adapts."
 
 **2:50–3:00 — Close.** URL + GitHub link on screen.

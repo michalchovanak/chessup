@@ -42,7 +42,8 @@ export async function registerWebMcpTools(signal: AbortSignal): Promise<Register
     description: t.description,
     inputSchema: t.inputSchema,
     annotations: t.annotations,
-    execute: async (input: Record<string, unknown>) => toToolResult(await runTool(t.name, input ?? {}, "agent")),
+    execute: async (input: Record<string, unknown>, options?: { signal?: AbortSignal }) =>
+      toToolResult(await runTool(t.name, input ?? {}, "agent", options?.signal)),
   }));
 
   if (typeof mc.registerTool === "function") {

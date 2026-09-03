@@ -1,6 +1,6 @@
 # ♞ ChessUp — a chess coach that lives in your browser agent
 
-**ChessUp** is a chess board with no AI of its own. Instead it exposes **16 [WebMCP](https://github.com/webmachinelearning/webmcp) tools** so that the agent already in your browser (ChatGPT's built-in browser, or Chrome with WebMCP enabled) can *see* the board, *annotate* it, *set up puzzles built for your weaknesses*, *run a lesson plan* and *reward you* with XP and badges — while **you** play every move.
+**ChessUp** is a chess board with no AI of its own. Instead it exposes **17 [WebMCP](https://github.com/webmachinelearning/webmcp) tools** so that the agent already in your browser (ChatGPT's built-in browser, or Chrome with WebMCP enabled) can *see* the board, *annotate* it, *set up puzzles built for your weaknesses*, *run a lesson plan* and *reward you* with XP and badges — while **you** play every move.
 
 > Built for the [OpenAI WebMCP Challenge](https://webmcp.devpost.com).
 
@@ -39,6 +39,7 @@ All tools are registered from [`src/lib/webmcp.ts`](src/lib/webmcp.ts) via `navi
 | --- | --- |
 | `get_game_state` | FEN, turn, history/PGN, status, material, active puzzle progress, recent mistakes and **`eventsSinceLastCall`** (player moves with auto-analysis, puzzle solved/failed, game over, level-ups). |
 | `get_legal_moves` | Legal moves (optionally for one square), best capture, mate-in-one. |
+| `wait_for_player_move` | **Long-running call** that returns when the human moves (or a puzzle resolves, or after a timeout). Lets the agent run a whole game or drill in one turn: move → wait → coach → move. |
 | `make_move` | Play a move as the opponent or to demonstrate a line (SAN or from/to, optional comment). |
 | `undo_move` | Take back N half-moves; un-fails a puzzle so the student can retry. |
 | `new_game` | Start a game; choose the human's colour and opponent: `agent`, built-in `bot` (3 levels) or `human`. |
@@ -56,6 +57,7 @@ All tools are registered from [`src/lib/webmcp.ts`](src/lib/webmcp.ts) via `navi
 
 ### Human ↔ agent collaboration details
 
+- **Waiting instead of polling.** WebMCP is pull-based: the page cannot push events to the agent. `wait_for_player_move` keeps the tool call open (with the WebMCP `AbortSignal`) until the human acts, so the agent can play a full game without the human typing "your move" after every turn.
 - **Event queue.** The app records what the human did between agent calls (moves, puzzle results, game over) and hands it over in `get_game_state.eventsSinceLastCall`, so the agent never has to diff histories.
 - **Engine-free auto-analysis.** After every human move the app runs cheap chess.js heuristics (hanging piece, missed/allowed mate in one, missed winning capture) and files them as mistakes. The agent adds the judgement the heuristics cannot (openings, plans, king safety) with `record_mistake`. Both feed `get_player_profile.weakestAreas`, which drives puzzle selection.
 - **Puzzle contract.** `set_position` validates the solution line against the FEN and returns the legal moves if the agent's line is illegal, so hallucinated puzzles are caught before the student sees them.

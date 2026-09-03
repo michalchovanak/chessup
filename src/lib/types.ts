@@ -160,4 +160,5 @@ export interface AppState {
   events: AgentEvent[];
   toolLog: ToolCallRecord[];
   thinking: boolean;
+  agentWaiting: boolean;
 }

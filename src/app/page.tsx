@@ -37,7 +37,7 @@ export default function Home() {
         </aside>
       </div>
       <footer className="px-8 pb-8 text-center text-[11px] text-slate-600">
-        ChessUp · built for the WebMCP Challenge · the agent (ChatGPT) coaches through 16 WebMCP tools, you play every move.
+        ChessUp · built for the WebMCP Challenge · the agent (ChatGPT) coaches through 17 WebMCP tools, you play every move.
       </footer>
     </main>
   );

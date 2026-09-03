@@ -11,6 +11,8 @@ export function GameControls() {
   const status = gameStatus(chess);
   const [copied, setCopied] = useState(false);
 
+  const humanTurn = st.settings.opponent === "human" || chess.turn() === st.settings.playerColor;
+  const coachTurn = st.settings.opponent === "agent" && !humanTurn && !status.over;
   const turnLabel = status.over
     ? `${status.result} · ${status.reason}`
     : `${chess.turn() === "w" ? "White" : "Black"} to move${status.reason === "check" ? " · check!" : ""}`;
@@ -26,6 +28,18 @@ export function GameControls() {
         </span>
       </div>
 
+      {coachTurn && (
+        <div className="flex items-center gap-2 rounded-xl border border-emerald-400/20 bg-emerald-400/[0.06] px-3 py-2 text-xs text-emerald-100/90">
+          <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
+          Coach&apos;s move. It replies through WebMCP. If it stays quiet, tell it in the chat: <span className="font-semibold">&ldquo;your move&rdquo;</span>.
+        </div>
+      )}
+      {st.agentWaiting && humanTurn && !status.over && (
+        <div className="flex items-center gap-2 rounded-xl border border-amber-400/20 bg-amber-400/[0.06] px-3 py-2 text-xs text-amber-100/90">
+          <span className="h-2 w-2 rounded-full bg-amber-400 animate-pulse" />
+          Your coach is waiting for your move.
+        </div>
+      )}
       <div className="flex flex-wrap gap-2">
         <button onClick={() => store.newGame({ playerColor: "w" })} className="btn">New game · White</button>
         <button onClick={() => store.newGame({ playerColor: "b" })} className="btn">New game · Black</button>

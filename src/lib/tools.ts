@@ -10,7 +10,7 @@ export interface ToolDef {
   description: string;
   inputSchema: Record<string, unknown>;
   annotations?: { readOnlyHint?: boolean };
-  execute: (input: Record<string, unknown>) => Promise<unknown> | unknown;
+  execute: (input: Record<string, unknown>, options?: { signal?: AbortSignal }) => Promise<unknown> | unknown;
 }
 
 const ANNO_COLORS: AnnoColor[] = ["green", "red", "yellow", "blue", "orange"];
@@ -100,7 +100,7 @@ export const tools: ToolDef[] = [
     name: "get_game_state",
     title: "Get game state",
     description:
-      "Read the current chess board. Returns FEN, whose turn it is, which colour the human plays, move history (SAN + PGN), game status, material balance, the active puzzle (if any) and its progress, the human's recent mistakes (auto-detected or recorded by you), and `eventsSinceLastCall`: everything that happened since you last looked (player moves with auto-analysis, puzzle solved/failed, game over, level-ups). Call this first and after every human move before coaching. If `yourTurn` is true you are expected to reply with make_move.",
+      "Read the current chess board. Returns FEN, whose turn it is, which colour the human plays, move history (SAN + PGN), game status, material balance, the active puzzle (if any) and its progress, the human's recent mistakes (auto-detected or recorded by you), and `eventsSinceLastCall`: everything that happened since you last looked (player moves with auto-analysis, puzzle solved/failed, game over, level-ups). Call this first and whenever you need a fresh look. If `yourTurn` is true you are expected to reply with make_move. To react to the human's next move without them typing anything, use wait_for_player_move instead of polling.",
     inputSchema: { type: "object", properties: {}, additionalProperties: false },
     annotations: { readOnlyHint: true },
     execute: () => summariseState(),
@@ -134,10 +134,29 @@ export const tools: ToolDef[] = [
     },
   },
   {
+    name: "wait_for_player_move",
+    title: "Wait for the human's move",
+    description:
+      "Long-running call that returns as soon as the human acts on the board (plays a move, solves or fails a puzzle, takes a move back, starts a new game) or when `timeoutSeconds` elapses (default 60, max 120). This is how you keep a game or drill flowing without the human typing anything: after make_move as the opponent, or after set_position for a puzzle, call wait_for_player_move, then coach and reply based on the returned state. Returns the same payload as get_game_state plus `moved` (false on timeout: just call it again, optionally after a short encouraging coach_note).",
+    inputSchema: {
+      type: "object",
+      properties: {
+        timeoutSeconds: { type: "integer", minimum: 5, maximum: 120, description: "How long to wait before giving up. Default 60." },
+      },
+      additionalProperties: false,
+    },
+    annotations: { readOnlyHint: true },
+    execute: async (input, options) => {
+      const secs = Math.min(120, Math.max(5, Math.round(num(input.timeoutSeconds, 60))));
+      const moved = await store.waitForPlayerAction(secs * 1000, options?.signal);
+      return { moved, waitedSeconds: moved ? undefined : secs, ...summariseState() };
+    },
+  },
+  {
     name: "make_move",
     title: "Make a move",
     description:
-      "Play a move on the board for the side to move. Use it (a) to play as the human's opponent when get_game_state says `yourTurn` is true, or (b) to demonstrate a line to the student. Accepts SAN (e.g. 'Nf3', 'exd5', 'O-O', 'e8=Q') or from/to squares. Rejects illegal moves and returns the legal moves instead. Do not use it to move the human's pieces during a puzzle: the human must find the solution themselves.",
+      "Play a move on the board for the side to move. Use it (a) to play as the human's opponent when get_game_state says `yourTurn` is true, or (b) to demonstrate a line to the student. Accepts SAN (e.g. 'Nf3', 'exd5', 'O-O', 'e8=Q') or from/to squares. Rejects illegal moves and returns the legal moves instead. Do not use it to move the human's pieces during a puzzle: the human must find the solution themselves. When you play as the opponent, follow up with wait_for_player_move so the game keeps flowing.",
     inputSchema: {
       type: "object",
       properties: {
@@ -163,7 +182,17 @@ export const tools: ToolDef[] = [
       if (comment) store.addNote("info", `${r.move.san}: ${comment}`);
       const chess = new Chess(store.getState().fen);
       const status = gameStatus(chess);
-      return { ok: true, played: r.move.san, fen: chess.fen(), status: status.reason, gameOver: status.over, result: status.result, isPlayerTurn: store.isHumanTurn() };
+      const isPlayerTurn = store.isHumanTurn();
+      return {
+        ok: true,
+        played: r.move.san,
+        fen: chess.fen(),
+        status: status.reason,
+        gameOver: status.over,
+        result: status.result,
+        isPlayerTurn,
+        ...(isPlayerTurn && !status.over ? { next: "Call wait_for_player_move now to wait for the human's reply, then coach and reply again." } : {}),
+      };
     },
   },
   {
@@ -181,7 +210,7 @@ export const tools: ToolDef[] = [
     name: "new_game",
     title: "Start a new game",
     description:
-      "Reset the board to the starting position and start a game. Choose the human's colour and who plays the other side: 'agent' (you play via make_move, recommended when coaching), 'bot' (the app's simple built-in engine, level 1-3), or 'human' (the human plays both sides for analysis). Clears any active puzzle.",
+      "Reset the board to the starting position and start a game. Choose the human's colour and who plays the other side: 'agent' (you play via make_move and keep the game flowing with wait_for_player_move, recommended when coaching), 'bot' (the app's simple built-in engine, level 1-3), or 'human' (the human plays both sides for analysis). Clears any active puzzle.",
     inputSchema: {
       type: "object",
       properties: {
@@ -505,12 +534,12 @@ export const tools: ToolDef[] = [
 
 export const toolByName = new Map(tools.map((t) => [t.name, t]));
 
-export async function runTool(name: string, input: Record<string, unknown>, source: "agent" | "debug"): Promise<unknown> {
+export async function runTool(name: string, input: Record<string, unknown>, source: "agent" | "debug", signal?: AbortSignal): Promise<unknown> {
   const tool = toolByName.get(name);
   if (!tool) throw new Error(`Unknown tool ${name}`);
   const started = performance.now();
   try {
-    const output = await tool.execute(input ?? {});
+    const output = await tool.execute(input ?? {}, { signal });
     store.logToolCall({ tool: name, input, output, ok: true, durationMs: Math.round(performance.now() - started), source });
     return output;
   } catch (e) {

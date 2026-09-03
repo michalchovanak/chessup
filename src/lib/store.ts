@@ -72,6 +72,7 @@ export function initialState(): AppState {
     events: [],
     toolLog: [],
     thinking: false,
+    agentWaiting: false,
   };
 }
 
@@ -173,6 +174,36 @@ class Store {
   pushEvent(type: string, message: string, data?: Record<string, unknown>) {
     const ev: AgentEvent = { id: uid(), at: Date.now(), type, message, data };
     this.set({ events: [...this.state.events, ev].slice(-30) });
+    if (type !== "agent_move" && type !== "level_up") this.notifyWaiters();
+  }
+
+  // ---------- long-running "wait for the human" support ----------
+
+  private waiters = new Set<(moved: boolean) => void>();
+
+  /** Resolves true when the human acts on the board (move, puzzle result, undo, new game), false on timeout/abort. */
+  waitForPlayerAction(timeoutMs: number, signal?: AbortSignal): Promise<boolean> {
+    return new Promise((resolve) => {
+      let done = false;
+      const finish = (moved: boolean) => {
+        if (done) return;
+        done = true;
+        clearTimeout(timer);
+        this.waiters.delete(finish);
+        signal?.removeEventListener("abort", onAbort);
+        this.set({ agentWaiting: this.waiters.size > 0 });
+        resolve(moved);
+      };
+      const onAbort = () => finish(false);
+      const timer = setTimeout(() => finish(false), timeoutMs);
+      signal?.addEventListener("abort", onAbort);
+      this.waiters.add(finish);
+      this.set({ agentWaiting: true });
+    });
+  }
+
+  private notifyWaiters() {
+    for (const w of [...this.waiters]) w(true);
   }
 
   drainEvents(): AgentEvent[] {
