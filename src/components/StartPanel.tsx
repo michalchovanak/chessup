@@ -2,7 +2,7 @@
 import { useState } from "react";
 import { Panel } from "./Panel";
 import { useApp } from "@/lib/useApp";
-import { QUICK_PROMPTS } from "@/lib/prompts";
+import { QUICK_PROMPTS, chatgptDeeplink } from "@/lib/prompts";
 import { openOnboarding } from "./Onboarding";
 
 function useCopy() {
@@ -20,7 +20,7 @@ function useCopy() {
 export function StartPanel() {
   const st = useApp();
   const { copied, copy } = useCopy();
-  const url = typeof window !== "undefined" ? window.location.href.split("#")[0] : "https://chessup-gamma.vercel.app";
+  const url = typeof window !== "undefined" ? window.location.origin + "/" : "https://chessup-gamma.vercel.app/";
 
   if (!st.hydrated) return null;
 
@@ -55,9 +55,15 @@ export function StartPanel() {
             <span>Tell the agent what you want, in any language. It plays and coaches through the board.</span>
           </li>
         </ol>
-        <button onClick={() => copy("url", url)} className="btn btn-primary mt-3 w-full justify-center">
-          {copied === "url" ? "Link copied ✓" : "Copy this page's link"}
-        </button>
+        <div className="mt-3 grid grid-cols-[1fr_auto] gap-2">
+          <a href={chatgptDeeplink(url)} className="btn btn-primary text-center py-2">
+            Open in ChatGPT ↗
+          </a>
+          <button onClick={() => copy("url", url)} className="btn py-2" title="Copy the link to paste into any agent browser">
+            {copied === "url" ? "Copied ✓" : "Copy link"}
+          </button>
+        </div>
+        <p className="mt-2 text-[11px] text-slate-500">Requires the ChatGPT desktop app with site tools (GPT-5.6 Sol or Terra).</p>
       </Panel>
     );
   }

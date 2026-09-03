@@ -1,6 +1,6 @@
 # ♞ ChessUp — a chess coach that lives in your browser agent
 
-**ChessUp** is a chess board with no AI of its own. Instead it exposes **17 [WebMCP](https://github.com/webmachinelearning/webmcp) tools** so that the agent already in your browser (ChatGPT's built-in browser, or Chrome with WebMCP enabled) can *see* the board, *annotate* it, *set up puzzles built for your weaknesses*, *run a lesson plan* and *reward you* with XP and badges — while **you** play every move.
+**ChessUp** is a chess board with no AI of its own. Instead it exposes **18 [WebMCP](https://github.com/webmachinelearning/webmcp) tools** so that the agent already in your browser (ChatGPT's built-in browser, or Chrome with WebMCP enabled) can *see* the board, *annotate* it, *set up puzzles built for your weaknesses*, *run a lesson plan* and *reward you* with XP and badges — while **you** play every move.
 
 > Built for the [OpenAI WebMCP Challenge](https://webmcp.devpost.com).
 
@@ -15,11 +15,12 @@ Chess sites give everyone the same puzzles. A human coach watches *you*, notices
 ## Getting started (2 minutes)
 
 **Live app:** https://chessup-gamma.vercel.app
+**Open directly in ChatGPT:** [chatgpt.com/codex/deeplink?url=https://chessup-gamma.vercel.app/](https://chatgpt.com/codex/deeplink?url=https%3A%2F%2Fchessup-gamma.vercel.app%2F&openaicom_referred=true) (ChatGPT desktop app with site tools, GPT-5.6 Sol or Terra)
 
 1. **Open it inside an agent browser.**
-   - **ChatGPT app:** open a new browser tab (the `+` next to your tabs), paste the link, and use the chat panel next to it.
+   - **ChatGPT app:** click the deep link above, or open a new browser tab (the `+` next to your tabs), paste the link, and use the chat panel next to it.
    - **Chrome:** enable `chrome://flags/#enable-webmcp-testing`, restart, open the link, and use an agent that supports WebMCP.
-2. **Check the header pill.** It turns green, **Agent connected**, when the page's 17 tools are registered with the agent.
+2. **Check the header pill.** It turns green, **Agent connected**, when the page's 18 tools are registered with the agent.
 3. **Say what you want, in any language.** No special wording is needed. The tools carry a coaching protocol (start from the profile, play with `make_move` + `wait_for_player_move`, coach after every move), and every tool result tells the agent what to do next. Examples:
 
 ```
@@ -39,6 +40,7 @@ All tools are registered from [`src/lib/webmcp.ts`](src/lib/webmcp.ts) via `navi
 
 | Tool | Purpose |
 | --- | --- |
+| `read_coach_instructions` | "Read this first": role, the play loop, the drill loop and the rules. The same pattern OpenAI's Codex Modeling Studio uses (`readInstructionsForCodex`). |
 | `get_game_state` | FEN, turn, history/PGN, status, material, active puzzle progress, recent mistakes and **`eventsSinceLastCall`** (player moves with auto-analysis, puzzle solved/failed, game over, level-ups). |
 | `get_legal_moves` | Legal moves (optionally for one square), best capture, mate-in-one. |
 | `wait_for_player_move` | **Long-running call** that returns when the human moves (or a puzzle resolves, or after a timeout). Lets the agent run a whole game or drill in one turn: move → wait → coach → move. |

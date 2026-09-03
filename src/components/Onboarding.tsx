@@ -1,6 +1,6 @@
 "use client";
 import { useSyncExternalStore } from "react";
-import { QUICK_PROMPTS } from "@/lib/prompts";
+import { QUICK_PROMPTS, chatgptDeeplink } from "@/lib/prompts";
 
 const KEY = "chessup:onboarded";
 let forced = false;
@@ -60,12 +60,14 @@ export function Onboarding() {
 
         <div className="mt-6 grid gap-3">
           <Row n={1} title="Open this page inside an agent">
-            In the <b className="text-slate-100">ChatGPT app</b>: open a new browser tab (the + next to your tabs), paste the link, and chat in the side panel.
+            <a href={chatgptDeeplink(typeof window !== "undefined" ? window.location.origin + "/" : "https://chessup-gamma.vercel.app/")} className="btn btn-primary inline-block mb-2">Open in ChatGPT ↗</a>
+            <br />
+            Or in the <b className="text-slate-100">ChatGPT app</b>: open a new browser tab (the + next to your tabs), paste the link, and chat in the side panel.
             In <b className="text-slate-100">Chrome</b>: enable <code className="text-[11px] text-amber-200/90">chrome://flags/#enable-webmcp-testing</code> and use an agent that supports WebMCP.
             The header pill turns green when the agent is connected.
           </Row>
           <Row n={2} title="Say what you want, in any language">
-            &ldquo;{QUICK_PROMPTS[0].prompt}&rdquo; — or ask for puzzles, a lesson, or a review. The coach sees the board and your history through 17 WebMCP tools.
+            &ldquo;{QUICK_PROMPTS[0].prompt}&rdquo; — or ask for puzzles, a lesson, or a review. The coach sees the board and your history through 18 WebMCP tools.
           </Row>
           <Row n={3} title="You play, the coach adapts">
             Move by clicking or dragging. The coach replies on the board, draws arrows, builds puzzles for your weak spots and awards XP and badges. Everything is saved in this browser.

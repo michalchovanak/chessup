@@ -49,3 +49,8 @@ export const COACH_PROTOCOL = [
   "Drills: build puzzles with set_position (fen + title + goal + theme + solution), then wait_for_player_move and grade with add_xp / award_badge.",
   "Keep notes short, encouraging and specific. The human plays every move; you never move the human's pieces in a puzzle.",
 ];
+
+/** Deep link that opens a URL inside the ChatGPT desktop app's browser (format used by OpenAI's WebMCP sample apps). */
+export function chatgptDeeplink(appUrl: string): string {
+  return `https://chatgpt.com/codex/deeplink?url=${encodeURIComponent(appUrl)}&openaicom_referred=true`;
+}

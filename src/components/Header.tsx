@@ -44,7 +44,7 @@ function AgentPill({ connected, hydrated }: { connected: boolean; hydrated: bool
   const label = !hydrated ? "…" : connected ? "Agent connected" : "No agent detected";
   return (
     <div
-      title={connected ? "navigator.modelContext found: 17 tools registered via WebMCP" : "Open this page in ChatGPT's browser or Chrome with chrome://flags/#enable-webmcp-testing to let an agent coach you."}
+      title={connected ? "navigator.modelContext found: 18 tools registered via WebMCP" : "Open this page in ChatGPT's browser or Chrome with chrome://flags/#enable-webmcp-testing to let an agent coach you."}
       className={`flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-medium ${
         connected ? "border-emerald-400/30 bg-emerald-400/10 text-emerald-300" : "border-white/10 bg-white/5 text-slate-400"
       }`}
