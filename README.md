@@ -21,7 +21,7 @@ Chess sites give everyone the same puzzles. A human coach watches *you*, notices
    - **ChatGPT app:** click the deep link above, or open a new browser tab (the `+` next to your tabs), paste the link, and use the chat panel next to it.
    - **Chrome:** enable `chrome://flags/#enable-webmcp-testing`, restart, open the link, and use an agent that supports WebMCP.
 2. **Check the header pill.** It turns green, **Agent connected**, when the page's 18 tools are registered with the agent.
-3. **Say what you want, in any language.** No special wording is needed. The tools carry a coaching protocol (start from the profile, play with `make_move` + `wait_for_player_move`, coach after every move), and every tool result tells the agent what to do next. Examples:
+3. **Send one message, in any language.** Agents only act when you talk to them, so the page cannot start the conversation; after your first message the coach keeps the game going by itself. No special wording is needed. The tools carry a coaching protocol (start from the profile, play with `make_move` + `wait_for_player_move`, coach after every move), and every tool result tells the agent what to do next. Examples:
 
 ```
 Play a game against me and coach me after each move.
@@ -87,10 +87,6 @@ src/lib/tools.ts       the 16 WebMCP tool definitions (schemas + execute)
 src/lib/webmcp.ts      registration with navigator/document.modelContext
 src/components/        board and panels
 ```
-
-## Image credits
-
-The "thinking" images shown while you wait for the coach come from Wikimedia Commons: paintings by Adolphe-Alexandre Lesrel, Gustav Wentzel, Erno Erb, James Northcote, Thomas Eakins and Ludwig Deutsch (public domain), and *Immersed in Thought* by Alex Proimos (CC BY 2.0). Each image links to its source page in the app.
 
 ## License
 

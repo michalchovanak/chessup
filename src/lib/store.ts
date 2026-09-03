@@ -74,6 +74,7 @@ export function initialState(): AppState {
     thinking: false,
     agentWaiting: false,
     gameStartedAt: 0,
+    lastMoveAt: 0,
   };
 }
 
@@ -157,8 +158,13 @@ class Store {
       /* corrupted storage: start fresh */
     }
     const profile = patch.profile ?? this.state.profile;
+    const stale = Date.now() - (profile.lastSeenAt ?? 0) > 6 * 60 * 60 * 1000;
     profile.sessions += 1;
     profile.lastSeenAt = Date.now();
+    if (stale) {
+      patch.notes = [];
+      patch.lesson = { title: "Lesson plan", steps: [] };
+    }
     this.set({ ...patch, profile, hydrated: true });
     this.maybeScheduleBot();
   }
@@ -278,6 +284,7 @@ class Store {
       highlights: [],
       arrows: [],
       thinking: false,
+      lastMoveAt: Date.now(),
     });
 
     if (by === "player") {
@@ -400,6 +407,8 @@ class Store {
       gameRecorded: false,
       thinking: false,
       gameStartedAt: Date.now(),
+      lastMoveAt: Date.now(),
+      notes: [],
     });
     this.pushEvent("new_game", `New game started. Player is ${merged.playerColor === "w" ? "White" : "Black"}, opponent: ${merged.opponent}.`);
     this.maybeScheduleBot();
@@ -465,6 +474,7 @@ class Store {
       gameRecorded: false,
       thinking: false,
       gameStartedAt: Date.now(),
+      lastMoveAt: Date.now(),
       settings: { ...this.state.settings, playerColor },
     });
     this.pushEvent("position_set", isPuzzle ? `Puzzle "${puzzle!.title}" started.` : "Position set.");
@@ -539,6 +549,14 @@ class Store {
     const note: CoachNote = { id: uid(), at: Date.now(), kind, text };
     this.set({ notes: [note, ...this.state.notes].slice(0, MAX_NOTES) });
     return note;
+  }
+
+  clearNotes() {
+    this.set({ notes: [] });
+  }
+
+  clearLesson() {
+    this.set({ lesson: { title: "Lesson plan", steps: [] } });
   }
 
   setLesson(title: string | undefined, steps: LessonStep[]) {

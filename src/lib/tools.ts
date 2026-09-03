@@ -170,17 +170,17 @@ export const tools: ToolDef[] = [
     name: "wait_for_player_move",
     title: "Wait for the human's move",
     description:
-      "Waits until the human acts on the board (move, puzzle solved or failed, undo, new game) or until timeoutSeconds passes (default 60, max 120). Call it after every make_move or set_position instead of ending your turn; on timeout simply call it again. Returns the game state plus `moved` and `next`.",
+      "Waits until the human acts on the board (move, puzzle solved or failed, undo, new game) or until timeoutSeconds passes (default 25, max 120). Call it after every make_move or set_position instead of ending your turn; on timeout (moved=false) call it again right away, as many times as needed. Returns the game state plus `moved` and `next`.",
     inputSchema: {
       type: "object",
       properties: {
-        timeoutSeconds: { type: "integer", minimum: 5, maximum: 120, description: "How long to wait before giving up. Default 60." },
+        timeoutSeconds: { type: "integer", minimum: 5, maximum: 120, description: "How long to wait before giving up. Default 25." },
       },
       additionalProperties: false,
     },
     annotations: { readOnlyHint: true },
     execute: async (input, options) => {
-      const secs = Math.min(120, Math.max(5, Math.round(num(input.timeoutSeconds, 60))));
+      const secs = Math.min(120, Math.max(5, Math.round(num(input.timeoutSeconds, 25))));
       const moved = await store.waitForPlayerAction(secs * 1000, options?.signal);
       const puzzle = store.getState().puzzle;
       const override = !moved

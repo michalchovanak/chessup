@@ -1,6 +1,7 @@
 "use client";
 import { Panel, Empty } from "./Panel";
 import { useApp } from "@/lib/useApp";
+import { store } from "@/lib/store";
 import type { NoteKind } from "@/lib/types";
 
 const STYLE: Record<NoteKind, { icon: string; cls: string }> = {
@@ -14,7 +15,11 @@ const STYLE: Record<NoteKind, { icon: string; cls: string }> = {
 export function CoachPanel() {
   const st = useApp();
   return (
-    <Panel title="Coach" badge={st.notes.length ? <span className="text-[10px] text-slate-500">{st.notes.length}</span> : null}>
+    <Panel
+      title="Coach"
+      badge={st.notes.length ? <span className="text-[10px] text-slate-500">{st.notes.length}</span> : null}
+      action={st.notes.length ? <button onClick={() => store.clearNotes()} className="text-[11px] text-slate-500 hover:text-slate-300">clear</button> : null}
+    >
       {st.notes.length === 0 ? (
         <Empty>
           {st.agentConnected

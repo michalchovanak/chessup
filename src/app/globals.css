@@ -42,15 +42,3 @@ body {
   border-radius: 8px;
 }
 
-.meme-text {
-  font-family: Impact, "Arial Black", "Helvetica Neue", Arial, sans-serif;
-  font-weight: 900;
-  text-transform: uppercase;
-  color: #fff;
-  font-size: clamp(16px, 3.4vw, 30px);
-  line-height: 1.05;
-  letter-spacing: 0.02em;
-  -webkit-text-stroke: 1.5px #000;
-  paint-order: stroke fill;
-  text-shadow: 2px 2px 0 #000, -2px -2px 0 #000, 2px -2px 0 #000, -2px 2px 0 #000, 0 0 8px rgba(0,0,0,0.6);
-}

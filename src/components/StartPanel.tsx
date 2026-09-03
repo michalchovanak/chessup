@@ -79,18 +79,21 @@ export function StartPanel() {
       }
     >
       <p className="text-sm text-slate-300 leading-relaxed">
-        Your coach is connected. Say anything in the chat, or copy one of these to get going:
+        Your coach is connected, but it only acts when you talk to it. Send one message in the chat to start; click a card to copy a ready-made one:
       </p>
       <ul className="mt-3 grid gap-2">
         {QUICK_PROMPTS.map((q) => (
-          <li key={q.id} className="group flex items-start gap-3 rounded-xl border border-white/[0.06] bg-white/[0.02] px-3 py-2.5 hover:border-amber-400/30 transition">
+          <li key={q.id} onClick={() => copy(q.id, q.prompt)} className="group flex cursor-pointer items-start gap-3 rounded-xl border border-white/[0.06] bg-white/[0.02] px-3 py-2.5 hover:border-amber-400/30 transition">
             <span className="text-lg leading-6">{q.emoji}</span>
             <div className="min-w-0 flex-1">
               <div className="text-sm font-medium text-slate-100">{q.title}</div>
               <div className="text-xs text-slate-400 leading-relaxed">{q.blurb}</div>
             </div>
             <button
-              onClick={() => copy(q.id, q.prompt)}
+              onClick={(e) => {
+                e.stopPropagation();
+                copy(q.id, q.prompt);
+              }}
               className="shrink-0 rounded-lg border border-white/10 px-2 py-1 text-[11px] text-slate-300 hover:bg-white/10"
               title={q.prompt}
             >

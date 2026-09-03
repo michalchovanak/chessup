@@ -162,4 +162,5 @@ export interface AppState {
   thinking: boolean;
   agentWaiting: boolean;
   gameStartedAt: number;
+  lastMoveAt: number;
 }

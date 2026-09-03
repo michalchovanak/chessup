@@ -66,8 +66,8 @@ export function Onboarding() {
             In <b className="text-slate-100">Chrome</b>: enable <code className="text-[11px] text-amber-200/90">chrome://flags/#enable-webmcp-testing</code> and use an agent that supports WebMCP.
             The header pill turns green when the agent is connected.
           </Row>
-          <Row n={2} title="Say what you want, in any language">
-            &ldquo;{QUICK_PROMPTS[0].prompt}&rdquo; — or ask for puzzles, a lesson, or a review. The coach sees the board and your history through 18 WebMCP tools.
+          <Row n={2} title="Send one message to wake the coach">
+            Agents only act when you talk to them; the page cannot start the conversation for you. Type anything, in any language, for example &ldquo;{QUICK_PROMPTS[0].prompt}&rdquo;. After that the coach keeps the game going on its own; if it ever goes quiet, a short &ldquo;your move&rdquo; wakes it again.
           </Row>
           <Row n={3} title="You play, the coach adapts">
             Move by clicking or dragging. The coach replies on the board, draws arrows, builds puzzles for your weak spots and awards XP and badges. Everything is saved in this browser.
