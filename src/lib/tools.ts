@@ -2,7 +2,6 @@
 import { Chess, type Square } from "chess.js";
 import { store, isSquare, levelFor, xpForLevel } from "./store";
 import { gameStatus, materialBalance, bestCapture, findMateInOne } from "./chessLogic";
-import { COACH_PROTOCOL } from "./prompts";
 import type { AnnoColor, Color, LessonStatus, LessonStep, MistakeCategory, NoteKind, Severity } from "./types";
 
 export interface ToolDef {
@@ -118,7 +117,6 @@ export const tools: ToolDef[] = [
     annotations: { readOnlyHint: true },
     execute: () => ({
       role: "You are a patient chess coach. The human plays every move on the board; you observe, explain, adapt and reward.",
-      protocol: COACH_PROTOCOL,
       playLoop: ["new_game (opponent 'agent')", "wait_for_player_move (if the human moves first)", "coach_note / highlight_squares / draw_arrows", "make_move", "wait_for_player_move", "repeat until gameOver"],
       drillLoop: ["get_player_profile → pick a weak theme", "set_position with fen, title, goal, hint, theme, solution", "wait_for_player_move", "coach_note + add_xp / award_badge", "next puzzle or undo_move to retry"],
       rules: [
