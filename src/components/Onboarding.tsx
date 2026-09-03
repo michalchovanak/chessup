@@ -59,23 +59,21 @@ export function Onboarding() {
         </div>
 
         <div className="mt-6 grid gap-3">
-          <Row n={1} title="Open this page inside an agent">
+          <Row n={1} title="Play right away">
+            Click or drag pieces. The built-in bot answers instantly, and the app records your moves, mistakes and results in this browser.
+          </Row>
+          <Row n={2} title="Open the page inside an agent for a coach">
             <a href={chatgptDeeplink(typeof window !== "undefined" ? window.location.origin + "/" : "https://chessup-gamma.vercel.app/")} className="btn btn-primary inline-block mb-2">Open in ChatGPT ↗</a>
             <br />
-            Or in the <b className="text-slate-100">ChatGPT app</b>: open a new browser tab (the + next to your tabs), paste the link, and chat in the side panel.
-            In <b className="text-slate-100">Chrome</b>: enable <code className="text-[11px] text-amber-200/90">chrome://flags/#enable-webmcp-testing</code> and use an agent that supports WebMCP.
-            The header pill turns green when the agent is connected.
+            Or in the <b className="text-slate-100">ChatGPT app</b> open a new browser tab (the + next to your tabs) and paste the link. In <b className="text-slate-100">Chrome</b>, enable <code className="text-[11px] text-amber-200/90">chrome://flags/#enable-webmcp-testing</code>. The header pill turns green when the coach is connected.
           </Row>
-          <Row n={2} title="Send one message to wake the coach">
-            Agents only act when you talk to them; the page cannot start the conversation for you. Type anything, in any language, for example &ldquo;{QUICK_PROMPTS[0].prompt}&rdquo;. After that the coach keeps the game going on its own; if it ever goes quiet, a short &ldquo;your move&rdquo; wakes it again.
-          </Row>
-          <Row n={3} title="You play, the coach adapts">
-            Move by clicking or dragging. The coach replies on the board, draws arrows, builds puzzles for your weak spots and awards XP and badges. Everything is saved in this browser.
+          <Row n={3} title="Talk to the coach when you want it">
+            It only acts when you message it, in any language: &ldquo;{QUICK_PROMPTS[0].prompt}&rdquo; It reads everything that happened on the board, draws arrows, builds drills for your weak spots, keeps a lesson plan and awards XP and badges.
           </Row>
         </div>
 
         <p className="mt-5 text-xs text-slate-500 leading-relaxed">
-          No agent? The board still works: play the built-in bot, and use the <b>Dev tools</b> panel at the bottom to call any coaching tool by hand.
+          Want the coach to play against you live? Set the opponent to &ldquo;coach (live sparring)&rdquo;. It works while you are not chatting. The <b>Dev tools</b> panel at the bottom lets you call any tool by hand.
         </p>
 
         <div className="mt-6 flex justify-end gap-2">

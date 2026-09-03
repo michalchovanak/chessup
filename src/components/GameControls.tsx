@@ -5,6 +5,7 @@ import { store } from "@/lib/store";
 import { useApp } from "@/lib/useApp";
 import { gameStatus } from "@/lib/chessLogic";
 import { ThinkingIndicator } from "./ThinkingIndicator";
+import { CoachCaption } from "./CoachCaption";
 
 export function GameControls() {
   const st = useApp();
@@ -25,10 +26,11 @@ export function GameControls() {
         <span className="text-slate-200 font-medium">{turnLabel}</span>
         <span className="ml-auto text-xs text-slate-500">
           You play {st.settings.playerColor === "w" ? "White" : "Black"} vs{" "}
-          {st.settings.opponent === "agent" ? "agent" : st.settings.opponent === "bot" ? `bot L${st.settings.botLevel}` : "yourself"}
+          {st.settings.opponent === "agent" ? "coach (sparring)" : st.settings.opponent === "bot" ? `bot · ${["easy", "normal", "hard"][st.settings.botLevel - 1]}` : "yourself"}
         </span>
       </div>
 
+      <CoachCaption />
       {coachTurn && <ThinkingIndicator />}
       {st.agentWaiting && humanTurn && !status.over && (
         <div className="flex items-center gap-2 rounded-xl border border-amber-400/20 bg-amber-400/[0.06] px-3 py-2 text-xs text-amber-100/90">
@@ -51,10 +53,10 @@ export function GameControls() {
             else store.setSettings({ opponent: v as "agent" | "human" });
           }}
         >
-          <option value="agent">Opponent: agent</option>
           <option value="bot1">Opponent: bot · easy</option>
           <option value="bot2">Opponent: bot · normal</option>
           <option value="bot3">Opponent: bot · hard</option>
+          <option value="agent">Opponent: coach (live sparring)</option>
           <option value="human">Opponent: myself</option>
         </select>
         <button

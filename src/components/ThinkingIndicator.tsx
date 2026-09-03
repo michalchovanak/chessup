@@ -27,15 +27,15 @@ export function ThinkingIndicator() {
         </span>
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">
-            <span className="font-medium">{noAgent ? "Waiting for an agent to play this side" : slow ? "The coach is quiet" : "Coach is thinking"}</span>
+            <span className="font-medium">{noAgent ? "Sparring needs a connected coach" : slow ? "The coach is quiet" : "Sparring: coach is thinking"}</span>
             <Dots />
             <span className="ml-auto tabular-nums text-[11px] opacity-70">{since}s</span>
           </div>
           <div className="mt-0.5 opacity-80">
             {noAgent
-              ? "Open this page in ChatGPT, or switch the opponent to a bot to play now."
+              ? "Switch the opponent back to a bot to keep playing."
               : slow
-                ? "Agents only act when you talk to them. Send it a nudge in the chat:"
+                ? "Sparring stops whenever you chat. Nudge it, or switch the opponent to a bot:"
                 : "It replies on the board through WebMCP."}
           </div>
         </div>

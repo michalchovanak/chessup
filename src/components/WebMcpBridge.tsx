@@ -7,6 +7,9 @@ import { registerWebMcpTools, getModelContext } from "@/lib/webmcp";
 export function WebMcpBridge() {
   useEffect(() => {
     store.hydrate();
+    if (process.env.NODE_ENV === "development") {
+      (window as unknown as { __chessup?: typeof store }).__chessup = store;
+    }
     const controller = new AbortController();
     let done = false;
     const delays = [0, 400, 1200, 3000, 6000];

@@ -7,15 +7,16 @@ A chess coach that lives in your browser agent: it watches you play, builds puzz
 Chess sites give everyone the same puzzles. A real coach watches *you*: they notice you keep hanging knights on the rim and set up three positions that punish exactly that. With WebMCP, the agent already in your browser can be that coach — if the web page gives it the right eyes and hands.
 
 ## What it does
-ChessUp is a normal chess board (click or drag) with **no AI of its own**. It registers **18 WebMCP tools** so the browser agent can:
+ChessUp is a normal chess board (click or drag) with **no AI of its own**. It registers **19 WebMCP tools** so the browser agent can:
 
 - **See**: `get_game_state` returns FEN, PGN, status, material, the active puzzle's progress, the player's recent mistakes and an **event queue** of everything the human did since the last call.
 - **Teach**: highlight squares, draw arrows, post coaching notes (tips, praise, warnings, questions), keep a live lesson plan.
 - **Adapt**: `get_player_profile` exposes mistakes by category and per-theme puzzle stats. The agent composes a FEN + solution line and hands it to `set_position`; the app validates the line, auto-plays the opponent's replies and grades the human's moves. That is **"puzzle rush on demand"**, built for one person.
-- **Play**: `make_move` lets the agent be the opponent or demonstrate a line; `undo_move` lets the student retry. `wait_for_player_move` is a long-running call that returns when the human acts, so the agent can run a whole game in a single turn: move, wait, coach, move.
+- **Drill**: `set_puzzle_queue` hands the page 3-5 validated puzzles; the app serves, grades and rewards them and reports results per theme. The agent plans, the page executes, the agent adapts.
+- **Play**: the human plays the built-in bot instantly; the board never waits for the agent. `make_move` and the long-running `wait_for_player_move` enable optional live sparring; `undo_move` lets the student retry.
 - **Reward**: `add_xp` and `award_badge` are tools, so gamification is the coach's judgement, not a fixed rule set. The profile persists across sessions.
 
-The human plays and decides; the agent observes, explains and adapts.
+The human plays and decides; the agent observes, explains and adapts. The design embraces WebMCP's pull model: the page cannot wake the agent, so it records everything and delegates long work (drills) to itself, and the agent catches up from an event queue whenever the human speaks.
 
 ## How WebMCP is used
 - Tools are registered with `navigator.modelContext.registerTool()` (and `document.modelContext` as a fallback) with full JSON schemas, `readOnlyHint` annotations and descriptive guidance so the agent knows *when* to use each one.
@@ -40,9 +41,9 @@ Engine-backed evaluation (Stockfish WASM) exposed as a tool, opening repertoire 
 
 **0:20–0:50 — Profile → plan.** Type: *"Look at my profile and build a lesson plan for today."* Show the agent calling `get_player_profile`, then the Lesson plan panel filling in. Point at the Agent activity log.
 
-**0:50–1:30 — Play + coaching.** Type: *"Play a game against me as Black and coach me after every move."* Make a couple of moves, deliberately hang a piece. Show the auto-detected mistake in the Player panel, the agent's red highlight and arrow, and a coach note. Take the move back.
+**0:50–1:30 — Play + review.** Play a few quick moves against the bot, deliberately hang a piece. Type: *"Review my game so far."* Show the agent reading `events`, the red highlight and arrow, the one-line caption under the board, and the mistake landing in the Player panel.
 
-**1:30–2:20 — Puzzle on demand.** Type: *"I keep hanging pieces. Give me a puzzle that punishes that."* Show `set_position` arriving, the Exercise card, solve it by dragging, the "Solved" badge, XP going up, a badge awarded by the agent.
+**1:30–2:20 — Drill on demand.** Type: *"Set up a drill of 3 puzzles for my weak spots."* Show `set_puzzle_queue` arriving, the Drill 1/3 card, solve them by dragging, XP going up, the Drill complete card, then *"I'm done"* and the agent reading the results and awarding a badge.
 
 **2:20–2:50 — Why it matters.** Voice over the tool table in the README: 18 tools, read_coach_instructions, wait_for_player_move, event queue, validation, persistence. "The human plays and decides. The agent observes, teaches and adapts."
 

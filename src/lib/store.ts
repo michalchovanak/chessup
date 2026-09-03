@@ -16,6 +16,8 @@ import type {
   Badge,
   CoachNote,
   Color,
+  Drill,
+  DrillResult,
   GameSettings,
   Highlight,
   LessonStep,
@@ -25,6 +27,7 @@ import type {
   NoteKind,
   Profile,
   Puzzle,
+  PuzzleSpec,
   Severity,
   ToolCallRecord,
 } from "./types";
@@ -47,6 +50,7 @@ function defaultProfile(): Profile {
     createdAt: now,
     lastSeenAt: now,
     xpLog: [],
+    drills: [],
   };
 }
 
@@ -67,6 +71,7 @@ export function initialState(): AppState {
     arrows: [],
     lesson: { title: "Lesson plan", steps: [] },
     puzzle: null,
+    drill: null,
     notes: [],
     profile: defaultProfile(),
     events: [],
@@ -122,11 +127,11 @@ class Store {
     if (typeof window === "undefined" || !this.state.hydrated) return;
     if (this.persistTimer) clearTimeout(this.persistTimer);
     this.persistTimer = setTimeout(() => {
-      const { profile, lesson, fen, startFen, moves, settings, puzzle, notes, gameRecorded, gameStartedAt } = this.state;
+      const { profile, lesson, fen, startFen, moves, settings, puzzle, drill, notes, gameRecorded, gameStartedAt } = this.state;
       try {
         localStorage.setItem(
           STORAGE_KEY,
-          JSON.stringify({ profile, lesson, fen, startFen, moves, settings, puzzle, notes, gameRecorded, gameStartedAt })
+          JSON.stringify({ profile, lesson, fen, startFen, moves, settings, puzzle, drill, notes, gameRecorded, gameStartedAt })
         );
       } catch {
         /* ignore quota errors */
@@ -149,6 +154,7 @@ class Store {
           moves: saved.moves ?? [],
           settings: { ...defaultSettings(), ...(saved.settings ?? {}) },
           puzzle: saved.puzzle ?? null,
+          drill: saved.drill ?? null,
           notes: saved.notes ?? [],
           gameRecorded: saved.gameRecorded ?? false,
           gameStartedAt: saved.gameStartedAt ?? 0,
@@ -171,10 +177,6 @@ class Store {
 
   setAgentConnected(v: boolean) {
     if (this.state.agentConnected !== v) this.set({ agentConnected: v });
-    if (v && this.state.settings.opponent === "bot" && this.state.moves.length === 0) {
-      // A coach is here: let the agent play the other side unless the human changes it.
-      this.set({ settings: { ...this.state.settings, opponent: "agent" } });
-    }
   }
 
   // ---------- events ----------
@@ -409,6 +411,7 @@ class Store {
       gameStartedAt: Date.now(),
       lastMoveAt: Date.now(),
       notes: [],
+      drill: null,
     });
     this.pushEvent("new_game", `New game started. Player is ${merged.playerColor === "w" ? "White" : "Black"}, opponent: ${merged.opponent}.`);
     this.maybeScheduleBot();
@@ -419,53 +422,88 @@ class Store {
     this.maybeScheduleBot();
   }
 
-  setPosition(input: SetPositionInput): { ok: true; puzzle: Puzzle | null } | { ok: false; error: string } {
-    const v = validateFen(input.fen);
+  /** Validates a puzzle line against its FEN. Returns normalised SAN moves or an error. */
+  validatePuzzleSpec(fen: string, solution: string[] | undefined): { ok: true; solution: string[] } | { ok: false; error: string } {
+    const v = validateFen(fen);
     if (!v.ok) return { ok: false, error: `Invalid FEN: ${v.error ?? "unknown error"}` };
-    if (this.botTimer) clearTimeout(this.botTimer);
-
-    // Validate the solution line against the position.
-    const solution: string[] = [];
-    if (input.solution?.length) {
-      const c = new Chess(input.fen);
-      for (const san of input.solution) {
+    const out: string[] = [];
+    if (solution?.length) {
+      const c = new Chess(fen);
+      for (const san of solution) {
         try {
           const m = c.move(san.trim());
-          solution.push(m.san);
+          out.push(m.san);
         } catch {
-          return { ok: false, error: `Solution move "${san}" is illegal after ${solution.join(" ") || "the starting position"}. Legal moves here: ${c.moves().join(", ")}` };
+          return { ok: false, error: `Solution move "${san}" is illegal after ${out.join(" ") || "the starting position"}. Legal moves here: ${c.moves().join(", ")}` };
         }
       }
     }
+    return { ok: true, solution: out };
+  }
 
-    const c = new Chess(input.fen);
-    const playerColor: Color = input.playerColor ?? (c.turn() as Color);
-    const isPuzzle = Boolean(input.title || input.goal || solution.length);
-    let puzzle: Puzzle | null = null;
-    const profile = structuredClone(this.state.profile);
+  setPosition(input: SetPositionInput): { ok: true; puzzle: Puzzle | null } | { ok: false; error: string } {
+    const v = this.validatePuzzleSpec(input.fen, input.solution);
+    if (!v.ok) return v;
+    if (this.botTimer) clearTimeout(this.botTimer);
+    const isPuzzle = Boolean(input.title || input.goal || v.solution.length);
+    this.set({ drill: null });
     if (isPuzzle) {
-      puzzle = {
-        id: uid(),
-        title: input.title ?? "Exercise",
-        goal: input.goal ?? (solution.length ? "Find the best line." : "Study this position."),
+      const puzzle = this.loadPuzzle({
         fen: input.fen,
+        title: input.title ?? "Exercise",
+        goal: input.goal ?? (v.solution.length ? "Find the best line." : "Study this position."),
         hint: input.hint,
         theme: input.theme,
-        solution,
-        solutionIndex: 0,
-        status: "active",
-        attempts: 0,
-        startedAt: Date.now(),
-      };
-      profile.puzzles.attempted += 1;
-      if (input.theme) {
-        const t = (profile.puzzles.byTheme[input.theme] ??= { attempted: 0, solved: 0 });
-        t.attempted += 1;
-      }
+        solution: v.solution,
+      }, input.playerColor);
+      return { ok: true, puzzle };
     }
+    const c = new Chess(input.fen);
+    const playerColor: Color = input.playerColor ?? (c.turn() as Color);
     this.set({
       fen: input.fen,
       startFen: input.fen,
+      moves: [],
+      puzzle: null,
+      highlights: [],
+      arrows: [],
+      gameRecorded: false,
+      thinking: false,
+      gameStartedAt: Date.now(),
+      lastMoveAt: Date.now(),
+      settings: { ...this.state.settings, playerColor },
+    });
+    this.pushEvent("position_set", "Position set.");
+    this.maybeScheduleBot();
+    return { ok: true, puzzle: null };
+  }
+
+  private loadPuzzle(spec: PuzzleSpec, playerColorOverride?: Color): Puzzle {
+    if (this.botTimer) clearTimeout(this.botTimer);
+    const c = new Chess(spec.fen);
+    const playerColor: Color = playerColorOverride ?? (c.turn() as Color);
+    const puzzle: Puzzle = {
+      id: uid(),
+      title: spec.title,
+      goal: spec.goal,
+      fen: spec.fen,
+      hint: spec.hint,
+      theme: spec.theme,
+      solution: spec.solution,
+      solutionIndex: 0,
+      status: "active",
+      attempts: 0,
+      startedAt: Date.now(),
+    };
+    const profile = structuredClone(this.state.profile);
+    profile.puzzles.attempted += 1;
+    if (spec.theme) {
+      const t = (profile.puzzles.byTheme[spec.theme] ??= { attempted: 0, solved: 0 });
+      t.attempted += 1;
+    }
+    this.set({
+      fen: spec.fen,
+      startFen: spec.fen,
       moves: [],
       puzzle,
       profile,
@@ -477,9 +515,70 @@ class Store {
       lastMoveAt: Date.now(),
       settings: { ...this.state.settings, playerColor },
     });
-    this.pushEvent("position_set", isPuzzle ? `Puzzle "${puzzle!.title}" started.` : "Position set.");
+    this.pushEvent("puzzle_started", `Puzzle "${puzzle.title}" started.`);
     this.maybeScheduleBot();
-    return { ok: true, puzzle };
+    return puzzle;
+  }
+
+  // ---------- drills (puzzle queue) ----------
+
+  startDrill(title: string, specs: PuzzleSpec[]): { drill: Drill } {
+    const drill: Drill = { id: uid(), title, puzzles: specs, index: 0, results: [], status: "active", startedAt: Date.now() };
+    this.set({ drill });
+    this.loadPuzzle(specs[0]);
+    this.set({ drill: { ...this.state.drill!, index: 0 } });
+    this.pushEvent("drill_started", `Drill "${title}" started with ${specs.length} puzzle(s).`);
+    return { drill };
+  }
+
+  private recordDrillResult(status: DrillResult["status"]) {
+    const d = this.state.drill;
+    const p = this.state.puzzle;
+    if (!d || d.status !== "active" || !p) return;
+    const results = [...d.results, { title: p.title, theme: p.theme, status, attempts: p.attempts + (status === "solved" ? 1 : 0) }];
+    this.set({ drill: { ...d, results } });
+  }
+
+  nextDrillPuzzle() {
+    const d = this.state.drill;
+    if (!d || d.status !== "active") return;
+    const next = d.index + 1;
+    if (next < d.puzzles.length) {
+      this.loadPuzzle(d.puzzles[next]);
+      this.set({ drill: { ...this.state.drill!, index: next } });
+    } else {
+      this.finishDrill();
+    }
+  }
+
+  skipDrillPuzzle() {
+    const p = this.state.puzzle;
+    if (!p) return;
+    this.recordDrillResult(p.attempts > 0 ? "failed" : "skipped");
+    const profile = structuredClone(this.state.profile);
+    if (p.attempts === 0) profile.puzzles.failed += 1;
+    this.set({ profile });
+    this.pushEvent("puzzle_skipped", `Puzzle "${p.title}" skipped.`);
+    this.nextDrillPuzzle();
+  }
+
+  private finishDrill() {
+    const d = this.state.drill;
+    if (!d) return;
+    const solved = d.results.filter((r) => r.status === "solved").length;
+    const total = d.puzzles.length;
+    const themes = [...new Set(d.results.map((r) => r.theme).filter((t): t is string => Boolean(t)))];
+    const profile = structuredClone(this.state.profile);
+    profile.drills = [{ at: Date.now(), title: d.title, solved, total, themes }, ...profile.drills].slice(0, 5);
+    this.set({ drill: { ...d, status: "done" }, profile });
+    if (solved > 0) this.addXp(10 * solved, `Drill "${d.title}": ${solved}/${total} solved`);
+    this.pushEvent("drill_completed", `Drill "${d.title}" finished: ${solved}/${total} solved.`, {
+      results: d.results.map((r) => ({ title: r.title, theme: r.theme, status: r.status, attempts: r.attempts })),
+    });
+  }
+
+  endDrill() {
+    this.set({ drill: null });
   }
 
   private checkPuzzleProgress(playerMove: Move | null) {
@@ -518,6 +617,10 @@ class Store {
       this.set({ profile });
       this.addXp(20, `Solved puzzle "${cur.title}"`);
       this.pushEvent("puzzle_solved", `Puzzle "${cur.title}" solved in ${cur.attempts + 1} attempt(s).`, { attempts: cur.attempts + 1, theme: cur.theme });
+      if (this.state.drill?.status === "active") {
+        this.recordDrillResult("solved");
+        setTimeout(() => this.nextDrillPuzzle(), 1400);
+      }
     }
   }
 

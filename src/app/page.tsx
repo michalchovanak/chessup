@@ -1,6 +1,5 @@
 import { Board } from "@/components/Board";
 import { Header } from "@/components/Header";
-import { CoachPanel } from "@/components/CoachPanel";
 import { PuzzleCard } from "@/components/PuzzleCard";
 import { LessonPlan } from "@/components/LessonPlan";
 import { ProfilePanel } from "@/components/ProfilePanel";
@@ -31,21 +30,20 @@ export default function Home() {
             <MoveLog />
             <AgentActivity />
           </div>
-          <div className="mt-4 space-y-4">
+          <div className="mt-4 space-y-4 opacity-80">
             <DebugPanel />
             <CoachProtocol />
           </div>
         </div>
         <aside className="space-y-4 min-w-0">
           <StartPanel />
-          <CoachPanel />
           <PuzzleCard />
           <LessonPlan />
           <ProfilePanel />
         </aside>
       </div>
       <footer className="px-8 pb-8 text-center text-[11px] text-slate-600">
-        ChessUp · built for the WebMCP Challenge · the agent (ChatGPT) coaches through 18 WebMCP tools, you play every move.
+        ChessUp · built for the WebMCP Challenge · you play every move, the agent (ChatGPT) coaches through 19 WebMCP tools.
       </footer>
     </main>
   );

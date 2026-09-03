@@ -79,6 +79,40 @@ export interface Puzzle {
   startedAt: number;
 }
 
+export interface PuzzleSpec {
+  fen: string;
+  title: string;
+  goal: string;
+  hint?: string;
+  theme?: string;
+  solution: string[];
+}
+
+export interface DrillResult {
+  title: string;
+  theme?: string;
+  status: "solved" | "failed" | "skipped";
+  attempts: number;
+}
+
+export interface Drill {
+  id: string;
+  title: string;
+  puzzles: PuzzleSpec[];
+  index: number;
+  results: DrillResult[];
+  status: "active" | "done";
+  startedAt: number;
+}
+
+export interface DrillSummary {
+  at: number;
+  title: string;
+  solved: number;
+  total: number;
+  themes: string[];
+}
+
 export interface PuzzleStats {
   attempted: number;
   solved: number;
@@ -103,6 +137,7 @@ export interface Profile {
   createdAt: number;
   lastSeenAt: number;
   xpLog: XpEntry[];
+  drills: DrillSummary[];
 }
 
 export type Opponent = "agent" | "bot" | "human";
@@ -155,6 +190,7 @@ export interface AppState {
   arrows: ArrowAnno[];
   lesson: { title: string; steps: LessonStep[] };
   puzzle: Puzzle | null;
+  drill: Drill | null;
   notes: CoachNote[];
   profile: Profile;
   events: AgentEvent[];

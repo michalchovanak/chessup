@@ -20,6 +20,8 @@ function useCopy() {
 export function StartPanel() {
   const st = useApp();
   const { copied, copy } = useCopy();
+  const [expanded, setExpanded] = useState(false);
+  const agentActive = st.toolLog.some((t) => t.source === "agent");
   const url = typeof window !== "undefined" ? window.location.origin + "/" : "https://chessup-gamma.vercel.app/";
 
   if (!st.hydrated) return null;
@@ -36,7 +38,7 @@ export function StartPanel() {
         }
       >
         <p className="text-sm text-slate-300 leading-relaxed">
-          No AI agent is talking to this page yet. You can play against the built-in bot right away, or open this page inside an agent browser so it can coach you:
+          Play the built-in bot right away. To get a coach that reviews your games, builds drills for your weak spots and keeps a lesson plan, open this page inside an agent browser:
         </p>
         <ol className="mt-3 space-y-2 text-sm text-slate-300">
           <li className="flex gap-2.5">
@@ -68,18 +70,29 @@ export function StartPanel() {
     );
   }
 
+  if (agentActive && !expanded) {
+    return (
+      <div className="flex items-center gap-3 rounded-2xl border border-white/[0.06] bg-[var(--panel)] px-4 py-2.5 text-xs text-slate-400">
+        <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
+        Coach connected. Talk to it in the chat whenever you want a review, a drill or a lesson.
+        <button onClick={() => setExpanded(true)} className="ml-auto text-slate-500 hover:text-amber-200">prompts ▾</button>
+      </div>
+    );
+  }
+
   return (
     <Panel
       title="Start"
       badge={<span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />}
       action={
-        <button onClick={openOnboarding} className="text-[11px] text-slate-400 hover:text-amber-200">
-          How it works
-        </button>
+        <span className="flex gap-3">
+          {agentActive && <button onClick={() => setExpanded(false)} className="text-[11px] text-slate-500 hover:text-slate-300">hide</button>}
+          <button onClick={openOnboarding} className="text-[11px] text-slate-400 hover:text-amber-200">How it works</button>
+        </span>
       }
     >
       <p className="text-sm text-slate-300 leading-relaxed">
-        Your coach is connected, but it only acts when you talk to it. Send one message in the chat to start; click a card to copy a ready-made one:
+        Play the bot on the board whenever you like. Your coach acts when you talk to it in the chat; click a card to copy a ready-made message:
       </p>
       <ul className="mt-3 grid gap-2">
         {QUICK_PROMPTS.map((q) => (

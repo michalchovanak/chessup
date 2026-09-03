@@ -6,9 +6,16 @@ import { useApp } from "@/lib/useApp";
 export function AgentActivity() {
   const st = useApp();
   const [open, setOpen] = useState<string | null>(null);
+  const [shown, setShown] = useState(false);
   return (
-    <Panel title="Agent activity" badge={<span className="text-[10px] text-slate-500">{st.toolLog.length} tool calls</span>}>
-      {st.toolLog.length === 0 ? (
+    <Panel
+      title="Agent activity"
+      badge={<span className="text-[10px] text-slate-500">{st.toolLog.length} tool calls</span>}
+      action={<button onClick={() => setShown((v) => !v)} className="text-[11px] text-slate-500 hover:text-slate-300">{shown ? "hide" : "show"}</button>}
+    >
+      {!shown ? (
+        <p className="text-xs text-slate-500">Every WebMCP tool call the coach makes, with input and output.</p>
+      ) : st.toolLog.length === 0 ? (
         <Empty>Every WebMCP tool call the agent makes shows up here, with its input and output.</Empty>
       ) : (
         <ul className="max-h-64 overflow-y-auto space-y-1 pr-1">

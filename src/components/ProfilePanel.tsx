@@ -1,7 +1,7 @@
 "use client";
 import { useState } from "react";
 import { Panel } from "./Panel";
-import { store, levelFor } from "@/lib/store";
+import { store, levelFor, xpForLevel } from "@/lib/store";
 import { useApp } from "@/lib/useApp";
 
 const CATEGORY_LABEL: Record<string, string> = {
@@ -23,36 +23,33 @@ export function ProfilePanel() {
   const [editing, setEditing] = useState(false);
   const [showMistakes, setShowMistakes] = useState(false);
 
+  const level = levelFor(p.xp);
+  const cur = xpForLevel(level);
+  const next = xpForLevel(level + 1);
+  const pct = Math.min(100, Math.round(((p.xp - cur) / (next - cur)) * 100));
+
   const byCat = new Map<string, number>();
   for (const m of p.mistakes) byCat.set(m.category, (byCat.get(m.category) ?? 0) + 1);
-  const cats = [...byCat.entries()].sort((a, b) => b[1] - a[1]).slice(0, 4);
+  const cats = [...byCat.entries()].sort((a, b) => b[1] - a[1]).slice(0, 3);
   const maxCat = cats[0]?.[1] ?? 1;
 
   return (
     <Panel
       title="Player"
       action={
-        <button
-          onClick={() => {
-            if (confirm("Reset XP, badges, mistakes and lesson plan?")) store.resetProfile();
-          }}
-          className="text-[11px] text-slate-600 hover:text-rose-300"
-        >
+        <button onClick={() => { if (confirm("Reset XP, badges, mistakes and lesson plan?")) store.resetProfile(); }} className="text-[11px] text-slate-600 hover:text-rose-300">
           reset
         </button>
       }
     >
       <div className="flex items-center gap-3">
-        <div className="h-10 w-10 rounded-full bg-gradient-to-br from-slate-600 to-slate-800 grid place-items-center text-lg">♔</div>
-        <div className="min-w-0">
+        <div className="h-9 w-9 rounded-full bg-gradient-to-br from-amber-300 to-amber-600 grid place-items-center text-slate-950 font-bold">{level}</div>
+        <div className="min-w-0 flex-1">
           {editing ? (
             <input
               autoFocus
               defaultValue={p.name}
-              onBlur={(e) => {
-                store.setPlayerName(e.target.value.trim() || "Player");
-                setEditing(false);
-              }}
+              onBlur={(e) => { store.setPlayerName(e.target.value.trim() || "Player"); setEditing(false); }}
               onKeyDown={(e) => e.key === "Enter" && (e.target as HTMLInputElement).blur()}
               className="bg-white/5 rounded px-2 py-0.5 text-sm outline-none ring-1 ring-amber-400/40"
             />
@@ -61,32 +58,26 @@ export function ProfilePanel() {
               {p.name} <span className="text-slate-600 font-normal">✎</span>
             </button>
           )}
-          <div className="text-xs text-slate-500">
-            Level {levelFor(p.xp)} · {p.xp} XP · {p.sessions} session{p.sessions === 1 ? "" : "s"}
+          <div className="mt-1 h-1.5 w-full rounded-full bg-white/10 overflow-hidden">
+            <div className="h-full rounded-full bg-gradient-to-r from-amber-300 to-amber-500 transition-all duration-700" style={{ width: `${pct}%` }} />
+          </div>
+          <div className="mt-1 text-[11px] text-slate-500">
+            {p.xp} XP · next level at {next} · games {p.games.won}-{p.games.lost}-{p.games.drawn} · puzzles {p.puzzles.solved}/{p.puzzles.attempted}
           </div>
         </div>
-      </div>
-
-      <div className="mt-4 grid grid-cols-3 gap-2 text-center">
-        <Stat label="Games" value={`${p.games.won}-${p.games.lost}-${p.games.drawn}`} sub="W-L-D" />
-        <Stat label="Puzzles" value={`${p.puzzles.solved}/${p.puzzles.attempted}`} sub="solved" />
-        <Stat label="Badges" value={String(p.badges.length)} sub="earned" />
       </div>
 
       {p.badges.length > 0 && (
-        <div className="mt-4">
-          <div className="text-[11px] uppercase tracking-wider text-slate-500 mb-1.5">Badges</div>
-          <div className="flex flex-wrap gap-1.5">
-            {p.badges.map((b) => (
-              <span key={b.id} title={b.description} className="inline-flex items-center gap-1 rounded-full border border-amber-400/25 bg-amber-400/10 px-2.5 py-1 text-xs text-amber-100">
-                <span>{b.emoji}</span> {b.name}
-              </span>
-            ))}
-          </div>
+        <div className="mt-3 flex flex-wrap gap-1.5">
+          {p.badges.map((b) => (
+            <span key={b.id} title={b.description} className="inline-flex items-center gap-1 rounded-full border border-amber-400/25 bg-amber-400/10 px-2 py-0.5 text-[11px] text-amber-100">
+              <span>{b.emoji}</span> {b.name}
+            </span>
+          ))}
         </div>
       )}
 
-      <div className="mt-4">
+      <div className="mt-3">
         <div className="flex items-center">
           <div className="text-[11px] uppercase tracking-wider text-slate-500">Weak spots</div>
           {p.mistakes.length > 0 && (
@@ -96,18 +87,13 @@ export function ProfilePanel() {
           )}
         </div>
         {cats.length === 0 ? (
-          <p className="text-xs text-slate-600 mt-1">No mistakes recorded yet. Play a game and the app (and your coach) will track them.</p>
+          <p className="text-xs text-slate-600 mt-1">Nothing recorded yet. Play a game; the app and your coach track mistakes here.</p>
         ) : (
-          <ul className="mt-1.5 space-y-1.5">
+          <ul className="mt-1.5 space-y-1">
             {cats.map(([c, n]) => (
               <li key={c} className="text-xs">
-                <div className="flex justify-between text-slate-300">
-                  <span>{CATEGORY_LABEL[c] ?? c}</span>
-                  <span className="text-slate-500">{n}</span>
-                </div>
-                <div className="mt-0.5 h-1 rounded-full bg-white/5 overflow-hidden">
-                  <div className="h-full bg-rose-400/70 rounded-full" style={{ width: `${(n / maxCat) * 100}%` }} />
-                </div>
+                <div className="flex justify-between text-slate-300"><span>{CATEGORY_LABEL[c] ?? c}</span><span className="text-slate-500">{n}</span></div>
+                <div className="mt-0.5 h-1 rounded-full bg-white/5 overflow-hidden"><div className="h-full bg-rose-400/70 rounded-full" style={{ width: `${(n / maxCat) * 100}%` }} /></div>
               </li>
             ))}
           </ul>
@@ -116,25 +102,12 @@ export function ProfilePanel() {
           <ul className="mt-2 space-y-1 max-h-40 overflow-y-auto pr-1">
             {p.mistakes.slice(0, 15).map((m) => (
               <li key={m.id} className="text-[11px] text-slate-400 leading-snug border-l border-white/10 pl-2">
-                <span className={m.severity === "blunder" ? "text-rose-300" : m.severity === "mistake" ? "text-amber-300" : "text-slate-300"}>
-                  {m.movePlayed ?? "?"}
-                </span>{" "}
-                {m.description}
+                <span className={m.severity === "blunder" ? "text-rose-300" : m.severity === "mistake" ? "text-amber-300" : "text-slate-300"}>{m.movePlayed ?? "?"}</span> {m.description}
               </li>
             ))}
           </ul>
         )}
       </div>
     </Panel>
-  );
-}
-
-function Stat({ label, value, sub }: { label: string; value: string; sub: string }) {
-  return (
-    <div className="rounded-xl bg-white/[0.03] border border-white/5 px-2 py-2">
-      <div className="text-[10px] uppercase tracking-wider text-slate-500">{label}</div>
-      <div className="text-base font-semibold text-slate-100 mt-0.5 tabular-nums">{value}</div>
-      <div className="text-[10px] text-slate-600">{sub}</div>
-    </div>
   );
 }

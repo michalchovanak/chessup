@@ -2,7 +2,7 @@
 import { Chess, type Square } from "chess.js";
 import { store, isSquare, levelFor, xpForLevel } from "./store";
 import { gameStatus, materialBalance, bestCapture, findMateInOne } from "./chessLogic";
-import type { AnnoColor, Color, LessonStatus, LessonStep, MistakeCategory, NoteKind, Severity } from "./types";
+import type { AnnoColor, Color, LessonStatus, LessonStep, MistakeCategory, NoteKind, PuzzleSpec, Severity } from "./types";
 
 export interface ToolDef {
   name: string;
@@ -55,13 +55,18 @@ function summariseState(nextOverride?: string) {
   const p = st.puzzle;
   const lastMove = st.moves[st.moves.length - 1];
   const yourTurn = opponent === "agent" && !humanTurn && !status.over;
+  const d = st.drill;
   const next =
     nextOverride ??
-    (status.over
-      ? "Game over: summarise, record_mistake / add_xp / award_badge, then offer new_game or a puzzle."
-      : yourTurn
-        ? "Your move: coach the last human move briefly, then make_move and wait_for_player_move."
-        : "Human to move: call wait_for_player_move (do not end your turn waiting for chat).");
+    (status.over && !p
+      ? "Game over: review it (arrows, highlights, one-sentence captions), record_mistake / add_xp / award_badge, then suggest a drill or new_game."
+      : d && d.status === "active"
+        ? "The human is working through the drill on the board. Answer questions; read results here when they return."
+        : opponent === "agent"
+          ? yourTurn
+            ? "Sparring: coach the last human move briefly, then make_move and wait_for_player_move."
+            : "Sparring: call wait_for_player_move."
+          : "The human plays the bot on the board. Coach from `events` and recentPlayerMistakes when asked; offer a review, a drill or a lesson step.");
   return {
     next,
     fen: st.fen,
@@ -90,6 +95,9 @@ function summariseState(nextOverride?: string) {
           nextExpectedMove: p.status === "active" ? p.solution[p.solutionIndex] ?? null : null,
         }
       : null,
+    drill: d
+      ? { title: d.title, status: d.status, progress: `${Math.min(d.results.length, d.puzzles.length)}/${d.puzzles.length}`, results: d.results.map((r) => `${r.title}: ${r.status}${r.attempts > 1 ? ` (${r.attempts} tries)` : ""}`) }
+      : null,
     recentPlayerMistakes: recentMistakes,
     events: store.drainEvents().slice(-8).map((e) => ({ type: e.type, message: e.message })),
   };
@@ -112,28 +120,28 @@ export const tools: ToolDef[] = [
     name: "read_coach_instructions",
     title: "Read coaching instructions",
     description:
-      "Read this first. Explains how to coach on this board: the tool loop for playing a game (make_move, then wait_for_player_move), how to run puzzle drills with set_position, how mistakes and rewards work, and the tone to use. Cheap and read-only.",
+      "Read this first. Explains how to coach on this board: the human plays the built-in bot, you review from `events`, run puzzle drills with set_puzzle_queue, keep a lesson plan and reward progress. Sparring (playing against the human) is optional. Cheap and read-only.",
     inputSchema: { type: "object", properties: {}, additionalProperties: false },
     annotations: { readOnlyHint: true },
     execute: () => ({
-      role: "You are a patient chess coach. The human plays every move on the board; you observe, explain, adapt and reward.",
-      playLoop: ["new_game (opponent 'agent')", "wait_for_player_move (if the human moves first)", "coach_note / highlight_squares / draw_arrows", "make_move", "wait_for_player_move", "repeat until gameOver"],
-      drillLoop: ["get_player_profile → pick a weak theme", "set_position with fen, title, goal, hint, theme, solution", "wait_for_player_move", "coach_note + add_xp / award_badge", "next puzzle or undo_move to retry"],
-      rules: [
-        "Never end your turn to wait for the human to type: use wait_for_player_move.",
-        "Never move the human's pieces in a puzzle; hint instead.",
-        "Keep coach notes to 1-3 sentences, specific and encouraging.",
-        "Use record_mistake for errors the app cannot see (opening, king safety, positional, endgame).",
-        "Reply in the human's language.",
+      role: "You are a patient chess coach. The human plays on the board (against the built-in bot); you observe, explain, adapt and reward. The board never waits for you.",
+      howItWorks: [
+        "You only run when the human talks to you. Each time, call get_game_state: `events` lists what happened since your last call.",
+        "Explain in the chat; on the board use highlight_squares, draw_arrows and one-sentence coach_note captions.",
+        "Personalise from get_player_profile (weakestAreas, recent mistakes, drills).",
       ],
-      next: "Call get_player_profile and get_game_state, then set_lesson_plan or start playing.",
+      reviewLoop: ["get_game_state", "highlight_squares / draw_arrows", "coach_note (1 sentence)", "record_mistake for non-tactical errors", "add_xp / award_badge for real progress"],
+      drillLoop: ["get_player_profile → pick weak themes", "set_puzzle_queue with 3-5 puzzles (fen, title, goal, hint, theme, solution)", "the app serves, grades and rewards them", "when the human returns: read `drill` in get_game_state, adapt the next drill"],
+      sparringLoop: ["only when the human asks to play against you", "new_game opponent 'agent'", "make_move", "wait_for_player_move", "repeat; it ends whenever the human chats"],
+      rules: ["Never move the human's pieces in a puzzle; hint instead.", "Keep captions to one sentence.", "Reply in the human's language."],
+      next: "Call get_player_profile and get_game_state now.",
     }),
   },
   {
     name: "get_game_state",
     title: "Get game state",
     description:
-      "Read the board: FEN, turn, the human's colour, status, material, recent moves, active puzzle progress, the human's recent mistakes, `events` since your last call (moves, puzzle results, game over) and `next` (what to do now). Coaching loop: make_move, then wait_for_player_move, then coach, repeat.",
+      "Read the board: FEN, turn, status, material, recent moves, active puzzle and drill progress, the human's recent mistakes, `events` since your last call (moves with auto-analysis, puzzle and drill results, game over) and `next`. Call it every time the human talks to you.",
     inputSchema: { type: "object", properties: {}, additionalProperties: false },
     annotations: { readOnlyHint: true },
     execute: () => summariseState(),
@@ -170,7 +178,7 @@ export const tools: ToolDef[] = [
     name: "wait_for_player_move",
     title: "Wait for the human's move",
     description:
-      "Waits until the human acts on the board (move, puzzle solved or failed, undo, new game) or until timeoutSeconds passes (default 25, max 120). Call it after every make_move or set_position instead of ending your turn; on timeout (moved=false) call it again right away, as many times as needed. Returns the game state plus `moved` and `next`.",
+      "Sparring mode only. Waits until the human acts on the board (move, puzzle result, undo, new game) or timeoutSeconds passes (default 25, max 120). Call it after every make_move; on timeout (moved=false) call it again. Returns the game state plus `moved`. The loop ends whenever the human chats; that is expected.",
     inputSchema: {
       type: "object",
       properties: {
@@ -195,7 +203,7 @@ export const tools: ToolDef[] = [
     name: "make_move",
     title: "Make a move",
     description:
-      "Play a move for the side to move: as the human's opponent, or to demonstrate a line. SAN ('Nf3', 'O-O', 'e8=Q') or from/to squares. Illegal moves are rejected with the legal list. Refused while it is the human's turn in an active puzzle. After your move call wait_for_player_move.",
+      "Play a move for the side to move. Use it in sparring mode (opponent 'agent') or to demonstrate a line. SAN ('Nf3', 'O-O', 'e8=Q') or from/to. Illegal moves are rejected with the legal list. Refused during the human's turn in an active puzzle. In sparring, follow with wait_for_player_move.",
     inputSchema: {
       type: "object",
       properties: {
@@ -250,19 +258,19 @@ export const tools: ToolDef[] = [
     name: "new_game",
     title: "Start a new game",
     description:
-      "Reset to the starting position. Choose the human's colour and the opponent: 'agent' (you, via make_move + wait_for_player_move), 'bot' (built-in engine, level 1-3) or 'human' (they play both sides). Clears any puzzle.",
+      "Reset to the starting position. Choose the human's colour and the opponent: 'bot' (default, built-in engine level 1-3, instant), 'agent' (sparring: you play via make_move + wait_for_player_move) or 'human' (they play both sides). Clears any puzzle or drill.",
     inputSchema: {
       type: "object",
       properties: {
         playerColor: { type: "string", enum: ["white", "black"], description: "Colour the human plays. Default white." },
-        opponent: { type: "string", enum: ["agent", "bot", "human"], description: "Who plays the other side. Default 'agent'." },
+        opponent: { type: "string", enum: ["bot", "agent", "human"], description: "Who plays the other side. Default 'bot'; 'agent' = sparring with you." },
         botLevel: { type: "integer", enum: [1, 2, 3], description: "Strength of the built-in bot when opponent is 'bot'." },
       },
       additionalProperties: false,
     },
     execute: (input) => {
       const pc = str(input.playerColor, "white") === "black" ? "b" : "w";
-      const opp = (["agent", "bot", "human"] as const).find((o) => o === input.opponent) ?? "agent";
+      const opp = (["agent", "bot", "human"] as const).find((o) => o === input.opponent) ?? "bot";
       const lvl = ([1, 2, 3] as const).find((l) => l === input.botLevel);
       store.newGame({ playerColor: pc, opponent: opp, ...(lvl ? { botLevel: lvl } : {}) });
       return { ok: true, ...summariseState() };
@@ -272,7 +280,7 @@ export const tools: ToolDef[] = [
     name: "set_position",
     title: "Set position / start a puzzle",
     description:
-      "Put a FEN on the board. Add title, goal, hint, theme and a SAN `solution` (human's move first, alternating sides) to make a puzzle: the app validates the line, auto-plays the replies and reports solved/failed through wait_for_player_move. Build puzzles for the weakest areas from get_player_profile. Without title/goal/solution it only sets the position.",
+      "Put a FEN on the board, or a single puzzle when you add title, goal, hint, theme and a SAN `solution` (human's move first, alternating sides). The app validates the line, auto-plays replies and grades the human. For several puzzles use set_puzzle_queue. Without title/goal/solution it only sets the position.",
     inputSchema: {
       type: "object",
       properties: {
@@ -308,6 +316,71 @@ export const tools: ToolDef[] = [
             : "Position set. Explain it with highlight_squares / draw_arrows / coach_note, or wait_for_player_move if the human should play."
         ),
         solutionLength: r.puzzle?.solution.length ?? 0,
+      };
+    },
+  },
+  {
+    name: "set_puzzle_queue",
+    title: "Start a puzzle drill",
+    description:
+      "Start a drill: 3-5 puzzles the app serves one by one, grades against the solution, auto-plays replies, awards XP and records results per theme. Each puzzle: fen, title, goal, optional hint, theme, and a SAN `solution` (human's move first, alternating). Invalid puzzles are rejected individually with the reason. Read results later in get_game_state.drill.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        title: { type: "string", description: "Drill title, e.g. 'Hanging pieces, round 1'." },
+        puzzles: {
+          type: "array",
+          minItems: 1,
+          maxItems: 8,
+          items: {
+            type: "object",
+            properties: {
+              fen: { type: "string", description: "Full FEN of the puzzle position." },
+              title: { type: "string", description: "Short title." },
+              goal: { type: "string", description: "What to achieve, e.g. 'White to play and win a piece'." },
+              hint: { type: "string", description: "Optional hint the human can reveal." },
+              theme: { type: "string", description: "Theme tag, e.g. 'fork', 'back_rank', 'hanging_piece'." },
+              solution: { type: "array", items: { type: "string" }, description: "SAN line, human's move first." },
+            },
+            required: ["fen", "title", "goal", "solution"],
+          },
+        },
+      },
+      required: ["puzzles"],
+      additionalProperties: false,
+    },
+    execute: (input) => {
+      const raw = Array.isArray(input.puzzles) ? input.puzzles : [];
+      const accepted: PuzzleSpec[] = [];
+      const rejected: { index: number; title: string; error: string }[] = [];
+      raw.forEach((item, index) => {
+        if (typeof item !== "object" || item === null) {
+          rejected.push({ index, title: "?", error: "Not an object." });
+          return;
+        }
+        const o = item as Record<string, unknown>;
+        const solution = Array.isArray(o.solution) ? o.solution.filter((x): x is string => typeof x === "string") : [];
+        const fen = str(o.fen);
+        const title = str(o.title) || `Puzzle ${index + 1}`;
+        if (!solution.length) {
+          rejected.push({ index, title, error: "Missing solution." });
+          return;
+        }
+        const v = store.validatePuzzleSpec(fen, solution);
+        if (!v.ok) {
+          rejected.push({ index, title, error: v.error });
+          return;
+        }
+        accepted.push({ fen, title, goal: str(o.goal) || "Find the best move.", hint: str(o.hint) || undefined, theme: str(o.theme) || undefined, solution: v.solution });
+      });
+      if (!accepted.length) return { ok: false, error: "No valid puzzles.", rejected };
+      const { drill } = store.startDrill(str(input.title) || "Puzzle drill", accepted);
+      return {
+        ok: true,
+        drillId: drill.id,
+        accepted: accepted.length,
+        rejected,
+        next: "The human solves the drill on the board now. When they come back, call get_game_state and read `drill.results`.",
       };
     },
   },
@@ -384,7 +457,7 @@ export const tools: ToolDef[] = [
     name: "coach_note",
     title: "Post a coaching note",
     description:
-      "Show a short note (1-3 sentences) in the Coach panel: tip, praise, warning, question or info. Use it after every human move and whenever you explain something.",
+      "Show a one-sentence caption under the board (tip, praise, warning, question or info) tied to what is on the board right now. Put explanations in the chat, not here.",
     inputSchema: {
       type: "object",
       properties: {
@@ -576,6 +649,7 @@ export const tools: ToolDef[] = [
         weakestAreas: weakest.slice(0, 3),
         recentMistakes: profile.mistakes.slice(0, 4).map((m) => ({ category: m.category, severity: m.severity, description: m.description, fen: m.fen, movePlayed: m.movePlayed, betterMove: m.betterMove })),
         recentXp: profile.xpLog.slice(0, 3).map((x) => ({ amount: x.amount, reason: x.reason })),
+        recentDrills: profile.drills.slice(0, 3).map((d) => ({ title: d.title, solved: d.solved, total: d.total, themes: d.themes })),
         lessonPlan: lesson,
       };
     },
