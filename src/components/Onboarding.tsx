@@ -60,11 +60,11 @@ export function Onboarding() {
         </div>
 
         <p className="mt-4 text-sm leading-relaxed text-slate-400">
-          Play normally. When you ask, the agent can read the game, explain mistakes on the board and turn them into a personal drill.
+          Play against the built-in bot, which replies instantly. When you ask in chat, your coach reads the game, explains mistakes on the board and turns them into a personal drill.
         </p>
 
         <ol className="mt-5 space-y-1 rounded-xl border border-white/[0.07] bg-black/10 p-2">
-          <Row n={1} title="Play a game" description="The board keeps the full move history." />
+          <Row n={1} title="Play a game" description="The bot replies instantly and the board keeps every move." />
           <Row n={2} title="Ask in chat" description="The coach reads the current position and your profile." />
           <Row n={3} title="Practise here" description="Arrows, lessons and puzzles appear on the board." />
         </ol>

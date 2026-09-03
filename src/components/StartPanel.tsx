@@ -5,6 +5,14 @@ import { useApp } from "@/lib/useApp";
 import { QUICK_PROMPTS, chatgptDeeplink } from "@/lib/prompts";
 import { openOnboarding } from "./Onboarding";
 
+const REVIEW_PROMPT = {
+  id: "review-game",
+  emoji: "🔎",
+  title: "Ask for a review",
+  blurb: "See the key moment marked on the board.",
+  prompt: "Review the game so far. Mark the most important moment on the board, show me the better move and tell me what I should think about next.",
+};
+
 function useCopy() {
   const [copied, setCopied] = useState<string | null>(null);
   return {
@@ -22,6 +30,9 @@ export function StartPanel() {
   const { copied, copy } = useCopy();
   const [expanded, setExpanded] = useState(false);
   const agentActive = st.toolLog.some((t) => t.source === "agent");
+  const latestMoveWasAMistake = (st.lastReview?.cpLoss ?? 0) >= 100;
+  const needsMoreMoves = st.moves.length < 4 && !latestMoveWasAMistake;
+  const primaryPrompt = latestMoveWasAMistake ? QUICK_PROMPTS[0] : REVIEW_PROMPT;
   const url = typeof window !== "undefined" ? window.location.origin + "/" : "https://chessup-gamma.vercel.app/";
 
   if (!st.hydrated) return null;
@@ -73,20 +84,30 @@ export function StartPanel() {
         </span>
       }
     >
-      <p className="text-sm leading-relaxed text-slate-300">Ask in the chat beside the board. The coach can review the game, mark the board and create practice.</p>
-      <button
-        onClick={() => copy(QUICK_PROMPTS[0].id, QUICK_PROMPTS[0].prompt)}
-        className="mt-3 flex w-full items-center gap-3 rounded-xl border border-amber-300/20 bg-amber-300/[0.06] p-3 text-left transition-colors hover:border-amber-300/35 hover:bg-amber-300/[0.09] active:scale-[0.985]"
-      >
-        <span className="text-base">{QUICK_PROMPTS[0].emoji}</span>
-        <span className="min-w-0 flex-1">
-          <span className="block text-sm font-medium text-stone-100">{QUICK_PROMPTS[0].title}</span>
-          <span className="block text-[11px] text-slate-500">{QUICK_PROMPTS[0].blurb}</span>
-        </span>
-        <span className={`text-[10px] font-medium ${copied === QUICK_PROMPTS[0].id ? "text-emerald-300" : "text-amber-200/70"}`}>
-          {copied === QUICK_PROMPTS[0].id ? "Copied ✓" : "Copy"}
-        </span>
-      </button>
+      <p className="text-sm leading-relaxed text-slate-300">The bot plays instantly. Your coach reviews the game when you ask in chat.</p>
+      {needsMoreMoves ? (
+        <div className="mt-3 flex items-center gap-3 rounded-xl border border-white/[0.07] bg-white/[0.025] p-3">
+          <span className="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-amber-300 text-xs font-semibold text-stone-950">1</span>
+          <span>
+            <span className="block text-sm font-medium text-stone-100">Play a few moves</span>
+            <span className="block text-[11px] text-slate-500">Start on the board. Your coach will follow the game.</span>
+          </span>
+        </div>
+      ) : (
+        <button
+          onClick={() => copy(primaryPrompt.id, primaryPrompt.prompt)}
+          className="mt-3 flex w-full items-center gap-3 rounded-xl border border-amber-300/20 bg-amber-300/[0.06] p-3 text-left transition-colors hover:border-amber-300/35 hover:bg-amber-300/[0.09] active:scale-[0.985]"
+        >
+          <span className="text-base">{primaryPrompt.emoji}</span>
+          <span className="min-w-0 flex-1">
+            <span className="block text-sm font-medium text-stone-100">{primaryPrompt.title}</span>
+            <span className="block text-[11px] text-slate-500">{primaryPrompt.blurb}</span>
+          </span>
+          <span className={`text-[10px] font-medium ${copied === primaryPrompt.id ? "text-emerald-300" : "text-amber-200/70"}`}>
+            {copied === primaryPrompt.id ? "Copied ✓" : "Copy"}
+          </span>
+        </button>
+      )}
       <details className="group mt-2">
         <summary className="cursor-pointer list-none py-1 text-[11px] text-slate-500 transition-colors hover:text-slate-300">More ideas <span className="inline-block transition-transform group-open:rotate-180">↓</span></summary>
         <ul className="mt-1 divide-y divide-white/[0.06] border-t border-white/[0.06]">

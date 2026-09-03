@@ -21,13 +21,13 @@ export function EvalBar() {
   const [copied, setCopied] = useState(false);
 
   // Never leak the answer: no evaluation while the human is solving a puzzle or drill.
-  if (st.puzzle && st.puzzle.status === "active") return null;
+  if (st.puzzle && st.puzzle.status === "active") return <div className="w-8 shrink-0" aria-hidden />;
 
   const ev = st.lastEval && st.lastEval.fen === st.fen ? st.lastEval : null;
   const score = ev?.scoreWhite ?? 0;
   const white = ev ? Math.max(5, Math.min(95, 50 + 50 * Math.tanh(score / 400))) : 50;
   const flipped = st.settings.playerColor === "b";
-  const label = ev ? formatScore(score) : st.engineStatus === "loading" ? "…" : "";
+  const label = ev ? formatScore(score) : st.engineStatus === "error" ? "—" : "…";
   const review = st.lastReview;
   const reviewIsMistake = !!review && review.cpLoss >= 100;
   const severity = !review ? "" : review.cpLoss >= 300 ? "blunder" : review.cpLoss >= 150 ? "mistake" : review.cpLoss >= 100 ? "inaccuracy" : "fine";
@@ -48,26 +48,35 @@ export function EvalBar() {
 
   return (
     <div
-      className="relative flex flex-col items-center gap-1 select-none"
+      className="relative flex w-8 shrink-0 flex-col items-center select-none"
       onMouseEnter={() => setOpen(true)}
       onMouseLeave={() => setOpen(false)}
-      onFocus={() => setOpen(true)}
       onBlur={(e) => {
         if (!e.currentTarget.contains(e.relatedTarget as Node | null)) setOpen(false);
       }}
-      tabIndex={0}
-      aria-label={ev ? `Engine evaluation ${formatScore(score)}, ${positionVerdict}` : "Engine evaluation"}
     >
-      <div className="relative h-full min-h-[200px] w-2.5 flex-1 overflow-hidden rounded-full bg-stone-800 ring-1 ring-white/10" style={{ transform: flipped ? "rotate(180deg)" : undefined }}>
-        <div className="absolute bottom-0 left-0 right-0 bg-stone-100 transition-[height] duration-500 ease-out" style={{ height: `${white}%` }} />
-      </div>
-      {reviewIsMistake && (
-        <span className="absolute -right-1 top-0 h-2.5 w-2.5 rounded-full bg-rose-400 ring-2 ring-[#0b0d0c] animate-pulse" aria-hidden />
-      )}
-      <span className={`text-[10px] font-mono tabular-nums ${score >= 0 ? "text-stone-200" : "text-stone-400"}`}>{label}</span>
+      <button
+        type="button"
+        title="Position score — click for an explanation"
+        className="group relative flex h-full min-h-[200px] w-full cursor-help flex-1 flex-col items-center gap-1"
+        onFocus={() => setOpen(true)}
+        onClick={() => setOpen(true)}
+        aria-expanded={open}
+        aria-haspopup="dialog"
+        aria-controls="evaluation-popover"
+        aria-label={ev ? `Position score ${formatScore(score)}, ${positionVerdict}. Open explanation.` : "Position score is being calculated"}
+      >
+        <span className="relative min-h-[200px] w-2.5 flex-1 overflow-hidden rounded-full bg-stone-800 ring-1 ring-white/10" style={{ transform: flipped ? "rotate(180deg)" : undefined }}>
+          <span className="absolute bottom-0 left-0 right-0 bg-stone-100 transition-[height] duration-500 ease-out" style={{ height: `${white}%` }} />
+        </span>
+        {reviewIsMistake && (
+          <span className="absolute -right-0.5 top-0 h-2.5 w-2.5 rounded-full bg-rose-400 ring-2 ring-[#0b0d0c] animate-pulse" aria-hidden />
+        )}
+        <span className={`rounded px-1 py-0.5 text-[10px] font-mono tabular-nums transition-colors group-hover:bg-white/[0.07] ${score >= 0 ? "text-stone-200" : "text-stone-400"}`}>{label}</span>
+      </button>
 
       {open && (
-        <div className="absolute left-5 top-0 z-30 w-64 rounded-2xl border border-white/10 bg-[#141a26] p-3.5 text-left shadow-2xl" role="dialog" aria-label="Position evaluation">
+        <div id="evaluation-popover" className="absolute left-5 top-0 z-30 w-64 rounded-2xl border border-white/10 bg-[#141a26] p-3.5 text-left shadow-2xl" role="dialog" aria-label="Position evaluation">
           <div className="text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-500">Position</div>
           {st.engineStatus === "ready" && ev ? (
             <>
