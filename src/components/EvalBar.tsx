@@ -21,7 +21,7 @@ export function EvalBar() {
   const [copied, setCopied] = useState(false);
 
   // Never leak the answer: no evaluation while the human is solving a puzzle or drill.
-  if (st.puzzle && st.puzzle.status === "active") return <div className="w-8 shrink-0" aria-hidden />;
+  if (st.puzzle && st.puzzle.status === "active") return <div className="w-9 shrink-0" aria-hidden />;
 
   const ev = st.lastEval && st.lastEval.fen === st.fen ? st.lastEval : null;
   const score = ev?.scoreWhite ?? 0;
@@ -48,7 +48,7 @@ export function EvalBar() {
 
   return (
     <div
-      className="relative flex w-8 shrink-0 flex-col items-center select-none"
+      className="relative flex w-9 shrink-0 flex-col items-center select-none"
       onMouseEnter={() => setOpen(true)}
       onMouseLeave={() => setOpen(false)}
       onBlur={(e) => {
@@ -72,7 +72,7 @@ export function EvalBar() {
         {reviewIsMistake && (
           <span className="absolute -right-0.5 top-0 h-2.5 w-2.5 rounded-full bg-rose-400 ring-2 ring-[#0b0d0c] animate-pulse" aria-hidden />
         )}
-        <span className={`rounded px-1 py-0.5 text-[10px] font-mono tabular-nums transition-colors group-hover:bg-white/[0.07] ${score >= 0 ? "text-stone-200" : "text-stone-400"}`}>{label}</span>
+        <span className={`block w-full overflow-hidden whitespace-nowrap rounded px-0.5 py-0.5 text-center text-[10px] font-mono tabular-nums transition-colors group-hover:bg-white/[0.07] ${score >= 0 ? "text-stone-200" : "text-stone-400"}`}>{label}</span>
       </button>
 
       {open && (

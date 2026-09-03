@@ -20,6 +20,9 @@
 
 html {
   color-scheme: dark;
+  /* Keep the viewport width stable when the vertical scrollbar appears or disappears
+     (otherwise the whole layout jumps sideways after a move changes the page height). */
+  scrollbar-gutter: stable;
 }
 
 body {
