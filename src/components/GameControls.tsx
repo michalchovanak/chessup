@@ -4,6 +4,7 @@ import { Chess } from "chess.js";
 import { store } from "@/lib/store";
 import { useApp } from "@/lib/useApp";
 import { gameStatus } from "@/lib/chessLogic";
+import { WaitingMeme } from "./WaitingMeme";
 
 export function GameControls() {
   const st = useApp();
@@ -29,10 +30,7 @@ export function GameControls() {
       </div>
 
       {coachTurn && (
-        <div className="flex items-center gap-2 rounded-xl border border-emerald-400/20 bg-emerald-400/[0.06] px-3 py-2 text-xs text-emerald-100/90">
-          <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
-          Coach&apos;s move. It replies through WebMCP. If it stays quiet, tell it in the chat: <span className="font-semibold">&ldquo;your move&rdquo;</span>.
-        </div>
+        <WaitingMeme label={st.agentConnected ? "Coach's move. It replies through WebMCP; if it stays quiet, say “your move” in the chat." : "Waiting for an agent to play this side. Switch the opponent to a bot if you want to play now."} />
       )}
       {st.agentWaiting && humanTurn && !status.over && (
         <div className="flex items-center gap-2 rounded-xl border border-amber-400/20 bg-amber-400/[0.06] px-3 py-2 text-xs text-amber-100/90">

@@ -88,6 +88,10 @@ src/lib/webmcp.ts      registration with navigator/document.modelContext
 src/components/        board and panels
 ```
 
+## Image credits
+
+The "thinking" images shown while you wait for the coach come from Wikimedia Commons: paintings by Adolphe-Alexandre Lesrel, Gustav Wentzel, Erno Erb, James Northcote, Thomas Eakins and Ludwig Deutsch (public domain), and *Immersed in Thought* by Alex Proimos (CC BY 2.0). Each image links to its source page in the app.
+
 ## License
 
 MIT
