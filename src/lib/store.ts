@@ -83,6 +83,7 @@ export function initialState(): AppState {
     lastMoveAt: 0,
     engineStatus: "off",
     lastEval: null,
+    registeredTools: [],
   };
 }
 
@@ -246,6 +247,12 @@ class Store {
 
   setAgentConnected(v: boolean) {
     if (this.state.agentConnected !== v) this.set({ agentConnected: v });
+  }
+
+  setRegisteredTools(names: string[]) {
+    const cur = this.state.registeredTools;
+    if (cur.length === names.length && cur.every((n, i) => n === names[i])) return;
+    this.set({ registeredTools: names });
   }
 
   // ---------- events ----------

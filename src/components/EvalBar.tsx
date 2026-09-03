@@ -5,6 +5,8 @@ import { formatScore } from "@/lib/engine";
 /** Thin vertical evaluation bar next to the board, fed by the built-in Stockfish. */
 export function EvalBar() {
   const st = useApp();
+  // Never leak the answer: no evaluation while the human is solving a puzzle or drill.
+  if (st.puzzle && st.puzzle.status === "active") return null;
   const ev = st.lastEval && st.lastEval.fen === st.fen ? st.lastEval : null;
   const score = ev?.scoreWhite ?? 0;
   // Map centipawns to a 5..95% white share with a soft curve.

@@ -44,19 +44,34 @@ export function ProfilePanel() {
           <div className="grid h-9 w-9 place-items-center rounded-full bg-amber-300 text-sm font-bold text-slate-950">{level}</div>
           <div className="min-w-0 flex-1">
             {editing ? (
+            <form
+              {...({ toolname: "set_player_name", tooldescription: "Change the player's display name shown in the profile." } as Record<string, string>)}
+              onSubmit={(e) => {
+                e.preventDefault();
+                const data = new FormData(e.currentTarget);
+                store.setPlayerName(String(data.get("name") ?? "").trim() || "Player");
+                setEditing(false);
+              }}
+              className="flex items-center gap-1.5"
+            >
               <input
                 autoFocus
+                name="name"
                 defaultValue={p.name}
-                onBlur={(e) => { store.setPlayerName(e.target.value.trim() || "Player"); setEditing(false); }}
-                onKeyDown={(e) => e.key === "Enter" && (e.target as HTMLInputElement).blur()}
-                className="bg-white/5 rounded px-2 py-0.5 text-sm outline-none ring-1 ring-amber-400/40"
+                maxLength={32}
+                required
+                {...({ toolparamdescription: "New display name, 1-32 characters." } as Record<string, string>)}
+                onBlur={(e) => e.currentTarget.form?.requestSubmit()}
+                className="w-40 rounded bg-white/5 px-2 py-0.5 text-sm outline-none ring-1 ring-amber-400/40"
               />
-            ) : (
-              <button onClick={() => setEditing(true)} className="text-sm font-semibold text-slate-100 hover:text-amber-200" title="Rename">
-                {p.name} <span className="text-slate-600 font-normal">✎</span>
-              </button>
-            )}
-            <div className="mt-1 h-1.5 w-full rounded-full bg-white/10 overflow-hidden">
+              <button type="submit" className="text-[11px] text-amber-200">save</button>
+            </form>
+          ) : (
+            <button onClick={() => setEditing(true)} className="text-sm font-semibold text-slate-100 hover:text-amber-200" title="Rename">
+              {p.name} <span className="text-slate-600 font-normal">✎</span>
+            </button>
+          )}
+          <div className="mt-1 h-1.5 w-full rounded-full bg-white/10 overflow-hidden">
               <div className="h-full rounded-full bg-gradient-to-r from-amber-300 to-amber-500 transition-all duration-700" style={{ width: `${pct}%` }} />
             </div>
             <div className="mt-1 text-[11px] text-slate-500">

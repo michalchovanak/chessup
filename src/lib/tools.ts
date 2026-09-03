@@ -152,7 +152,7 @@ export const tools: ToolDef[] = [
       reviewLoop: ["get_game_state (events carry Stockfish centipawn loss and best move per human move)", "analyze_position when you need to verify a line", "highlight_squares / draw_arrows", "coach_note (1 sentence)", "record_mistake for non-tactical errors", "add_xp / award_badge for real progress"],
       drillLoop: ["get_player_profile → weakestAreas and candidatePuzzles (positions from the human's own games, already validated)", "set_puzzle_queue with 3-5 puzzles: start with candidatePuzzles, add your own on the same theme (fen, title, goal, hint, theme, solution)", "the app serves, grades and rewards them", "when the human returns: read `drill.results` in get_game_state, update_lesson_step, award_badge if at least two thirds were solved, plan the next drill"],
       sparringLoop: ["only when the human asks to play against you", "new_game opponent 'agent'", "make_move", "wait_for_player_move", "repeat; it ends whenever the human chats"],
-      rules: ["After set_puzzle_queue end your turn; never wait, poll or change the board while a drill is active.", "Never move the human's pieces in a puzzle; hint instead.", "Keep captions to one sentence.", "Reply in the human's language."],
+      rules: ["Tool sets change with context: board-changing tools vanish while a drill is active, wait_for_player_move exists only in sparring. Re-list tools if one is missing.", "After set_puzzle_queue end your turn; never wait, poll or change the board while a drill is active.", "Never move the human's pieces in a puzzle; hint instead.", "Keep captions to one sentence.", "Reply in the human's language."],
       next: "Call get_player_profile and get_game_state now.",
     }),
   },
@@ -806,6 +806,23 @@ function candidatePuzzles(mistakes: { category: string; fen: string; fenAfter?: 
     out.push({ title: `From your game (${when})`, fen, goal, theme: m.category, solution: v.solution, from: `you played ${m.movePlayed ?? "?"}` });
   }
   return out;
+}
+
+/**
+ * Dynamic tool sets. `core` is always registered; `board` disappears while a drill
+ * is active (the human is solving on the board); `sparring` exists only when the
+ * human chose the coach as a live opponent.
+ */
+export type ToolGroup = "core" | "board" | "sparring";
+export const TOOL_GROUPS: Record<string, ToolGroup> = {
+  new_game: "board",
+  set_position: "board",
+  set_puzzle_queue: "board",
+  make_move: "board",
+  wait_for_player_move: "sparring",
+};
+export function toolGroup(name: string): ToolGroup {
+  return TOOL_GROUPS[name] ?? "core";
 }
 
 export const toolByName = new Map(tools.map((t) => [t.name, t]));

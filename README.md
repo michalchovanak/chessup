@@ -66,6 +66,10 @@ ChessUp registers 20 tools from [`src/lib/tools.ts`](src/lib/tools.ts):
 
 Read operations carry `readOnlyHint`. Tool inputs are constrained by JSON Schema, illegal moves return legal alternatives, and invalid puzzle solutions are rejected before they reach the board.
 
+**Dynamic tool sets.** Tools are registered in groups, each with its own `AbortController`, and the set follows the app state: board-changing tools (`new_game`, `set_position`, `set_puzzle_queue`, `make_move`) are unregistered while a drill is active, and `wait_for_player_move` exists only when the human chose the coach as a live opponent. The header shows how many tools are live right now.
+
+**Declarative API too.** Renaming the player is a plain HTML form with `toolname`, `tooldescription` and `toolparamdescription` attributes, the declarative half of the WebMCP proposal, handled by the same `submit` handler a person uses.
+
 ## Implementation
 
 - Tools are registered at the top-level page through the imperative `modelContext.registerTool()` API, supporting both `document.modelContext` and `navigator.modelContext` hosts.

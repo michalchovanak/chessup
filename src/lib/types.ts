@@ -206,6 +206,8 @@ export interface AppState {
   gameStartedAt: number;
   lastMoveAt: number;
   engineStatus: "off" | "loading" | "ready" | "error";
+  /** Names of the WebMCP tools currently registered with the host (dynamic sets). */
+  registeredTools: string[];
   /** Latest engine evaluation of the current position (White's perspective, centipawns, mate folded). */
   lastEval: { fen: string; scoreWhite: number; depth: number; bestMove: string | null } | null;
 }

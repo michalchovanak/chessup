@@ -48,6 +48,8 @@ ChessUp registers 20 imperative tools from the top-level page through the `model
 
 The tool handlers reuse the same local store and chess logic as the human interface. `get_game_state` returns FEN, move history, status, material, active exercises, recent mistakes, and a queue of events since the previous call. Teaching tools draw arrows, highlight squares, and post notes. `set_puzzle_queue` accepts an agent-created drill, validates every FEN and SAN solution with chess.js, then verifies each of the student's moves with the built-in Stockfish (WebAssembly, in a Web Worker) and rejects lines that are illegal or not best. `analyze_position` exposes the same engine to the agent, and every human move is scored in centipawn loss so the profile is grounded in engine truth, not only in what the model believes.
 
+Tools are registered in groups with separate abort signals and the live set follows the app state: board-changing tools disappear while a drill is running, and the sparring tool exists only when the human asked for a live opponent. One capability (renaming the player) uses the declarative form-based API to show both halves of the proposal.
+
 Long-running work is delegated to the page. It serves and grades a drill without polling the agent, while `wait_for_player_move` supports optional live sparring with an `AbortSignal`. All state persists in `localStorage`; no backend or API key is required.
 
 ## Inspiration

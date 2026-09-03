@@ -14,7 +14,7 @@ export function Header() {
         </div>
 
         <div className="ml-auto flex items-center gap-2">
-          <AgentPill connected={st.agentConnected} hydrated={st.hydrated} />
+          <AgentPill connected={st.agentConnected} hydrated={st.hydrated} count={st.registeredTools.length} />
           <button onClick={openOnboarding} title="How ChessUp works" aria-label="Open guide" className="grid h-8 w-8 place-items-center rounded-lg text-sm text-slate-500 transition-colors hover:bg-white/5 hover:text-slate-200">
             ?
           </button>
@@ -24,11 +24,11 @@ export function Header() {
   );
 }
 
-function AgentPill({ connected, hydrated }: { connected: boolean; hydrated: boolean }) {
-  const label = !hydrated ? "…" : connected ? "WebMCP live" : "Solo mode";
+function AgentPill({ connected, hydrated, count }: { connected: boolean; hydrated: boolean; count: number }) {
+  const label = !hydrated ? "…" : connected ? `WebMCP live · ${count} tools` : "Solo mode";
   return (
     <div
-      title={connected ? "navigator.modelContext found: 20 tools registered via WebMCP" : "Open this page in ChatGPT's browser or Chrome with chrome://flags/#enable-webmcp-testing to let an agent coach you."}
+      title={connected ? `modelContext found: ${count} tools registered right now (the set changes with context)` : "Open this page in ChatGPT's browser or Chrome with chrome://flags/#enable-webmcp-testing to let an agent coach you."}
       className={`flex h-8 items-center gap-2 rounded-lg px-2 text-[11px] font-medium ${
         connected ? "text-emerald-300" : "text-slate-500"
       }`}
